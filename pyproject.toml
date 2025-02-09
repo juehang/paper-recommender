@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=42", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "paper-recommender"
+version = "0.1.0"
+description = "A tool for recommending research papers"
+authors = [
+    {name = "Juehang Qin"}
+]
+dependencies = [
+    "numpy>=2.0",
+    "requests>=2.25",
+    "feedparser>5.0",
+]
+
+requires-python = ">=3.8"
+
+[project.optional-dependencies]
+dev = [
+]
+
+[tool.black]
+line-length = 88
+target-version = ['py38']
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
