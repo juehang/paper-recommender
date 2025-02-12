@@ -22,3 +22,14 @@ def cosine_similarity(vec1, vec2):
         raise ValueError("Cannot compute cosine similarity for zero vectors.")
     else:
         return dot_product / (norm_vec1 * norm_vec2)
+    
+def construct_string(title, abstract):
+    """
+    Construct a single string from the title and abstract of a paper.
+    Args:
+        title (str): The title of the paper.
+        abstract (str): The abstract of the paper.
+        Returns:
+           str: A combined string of the title and abstract.
+    """
+    return f"Title: {title}\nAbstract: {abstract}"
