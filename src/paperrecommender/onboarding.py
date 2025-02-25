@@ -428,12 +428,7 @@ def terminal_ui_onboarding(config=None):
     onboarder = Onboarder(data_source, vector_store, embedding_model, 
                           [random_strategy, diverse_strategy])
     
-    # Create a progress tracker for the embedding model
-    # tqdm will handle the terminal display automatically
-    from .common import ProgressTracker
-    progress_tracker = ProgressTracker(description="Generating embeddings")
-    embedding_model.set_progress_tracker(progress_tracker)
-    
+    # The progress tracker will be created in prepare_candidates with the appropriate total
     print("Preparing candidate papers...")
     strategy_papers = onboarder.prepare_candidates()
     strategy_names = onboarder.get_strategy_names()
