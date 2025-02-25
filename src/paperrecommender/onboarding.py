@@ -88,10 +88,11 @@ class DiverseSelectionStrategy(OnboardingStrategy):
         remaining_indices = [i for i in range(available_count) if i not in used_indices]
         remaining_embeddings = []
         
-        # If the embedding model has a progress tracker, update its total
+        # The embedding model will automatically handle progress tracking and caching
+        # We don't need to reset the total here as the embedding model will count
+        # only uncached items when calculating progress
         if hasattr(self.embedding_model, 'progress_tracker') and self.embedding_model.progress_tracker:
             self.embedding_model.progress_tracker.reset(
-                total=len(remaining_indices),
                 description="Generating embeddings for diverse selection"
             )
         
@@ -189,7 +190,8 @@ class Onboarder:
         
         # Create a progress tracker for the embedding process if not already set
         if not hasattr(self.embedding_model, 'progress_tracker') or not self.embedding_model.progress_tracker:
-            # Estimate total papers to process
+            # Estimate total papers to process - the actual count will be adjusted
+            # by the embedding model based on cache hits
             total_papers = sum(strategy.sample_size for strategy in self.strategies)
             from .common import ProgressTracker
             progress_tracker = ProgressTracker(
@@ -499,7 +501,7 @@ def terminal_ui_onboarding():
                     print(f"Result {i+1}:")
                     print(f"  Similarity: {1 - distance:.4f}")  # Convert distance to similarity
                     print(f"  Rating: {metadata.get('rating', 'N/A')}")
-                    print(f"  Link: {metadata.get('links', ['N/A'])[0]}")
+                    print(f"  Link: {metadata.get('link', 'N/A')}")  # Fixed: 'link' instead of 'links'
                     print()
             else:
                 print("No results found.")

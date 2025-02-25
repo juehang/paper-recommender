@@ -31,7 +31,7 @@ class ChromaVectorStore(VectorStore):
         self.collection = self.client.get_or_create_collection(
             name="papers",
             embedding_function=embedding_function,
-            metadata={"hnsw_space": "cosine"},
+            metadata={"hnsw:space": "cosine"},
             )
 
     def add_document(self, document, link, rating):
