@@ -191,8 +191,8 @@ class GaussianRegressionRecommender(Recommender):
         if not titles:
             return []
         
-        # Generate embeddings for new papers
-        new_papers = []
+        # First pass: count papers that need embeddings (not in vector store)
+        papers_to_process = []
         filtered_count = 0
         for title, abstract, link in zip(titles, abstracts, links):
             document = construct_string(title, abstract)
@@ -202,6 +202,22 @@ class GaussianRegressionRecommender(Recommender):
                 filtered_count += 1
                 continue  # Skip this paper
                 
+            papers_to_process.append((title, abstract, link, document))
+        
+        if filtered_count > 0:
+            print(f"Filtered out {filtered_count} papers that already exist in the vector store.")
+        
+        # Create a progress tracker for the embedding process
+        from .common import ProgressTracker
+        progress_tracker = ProgressTracker(
+            total=len(papers_to_process),
+            description="Generating embeddings for recommendations"
+        )
+        self.embedding_model.set_progress_tracker(progress_tracker)
+        
+        # Second pass: generate embeddings with progress tracking
+        new_papers = []
+        for title, abstract, link, document in papers_to_process:
             embedding = self.embedding_model.get_embedding(document)
             
             new_papers.append({
@@ -211,9 +227,6 @@ class GaussianRegressionRecommender(Recommender):
                 "document": document,
                 "embedding": embedding
             })
-        
-        if filtered_count > 0:
-            print(f"Filtered out {filtered_count} papers that already exist in the vector store.")
         
         # For each new paper, find similar papers in the vector store
         recommendations = []
