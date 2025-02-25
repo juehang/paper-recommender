@@ -193,8 +193,15 @@ class GaussianRegressionRecommender(Recommender):
         
         # Generate embeddings for new papers
         new_papers = []
+        filtered_count = 0
         for title, abstract, link in zip(titles, abstracts, links):
             document = construct_string(title, abstract)
+            
+            # Check if the document already exists in the vector store
+            if self.vector_store.document_exists(document):
+                filtered_count += 1
+                continue  # Skip this paper
+                
             embedding = self.embedding_model.get_embedding(document)
             
             new_papers.append({
@@ -204,6 +211,9 @@ class GaussianRegressionRecommender(Recommender):
                 "document": document,
                 "embedding": embedding
             })
+        
+        if filtered_count > 0:
+            print(f"Filtered out {filtered_count} papers that already exist in the vector store.")
         
         # For each new paper, find similar papers in the vector store
         recommendations = []

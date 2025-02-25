@@ -490,6 +490,20 @@ def terminal_ui_onboarding(config=None):
     
     print("\n===== PAPER ONBOARDING SYSTEM =====\n")
     
+    # Initialize components with default configuration
+    print("Initializing onboarding system...")
+    data_source = ArXivDataSource(period=config["period_hours"])
+    embedding_model = OllamaEmbedding(cache_path=config["embedding_cache_path"])
+    vector_store = ChromaVectorStore(embedding_model, path=config["chroma_db_path"])
+    
+    # Create strategies with default sample sizes
+    random_strategy = RandomSelectionStrategy(data_source, embedding_model, config["random_sample_size"])
+    diverse_strategy = DiverseSelectionStrategy(data_source, embedding_model, config["diverse_sample_size"])
+    
+    # Create onboarder with strategies
+    onboarder = Onboarder(data_source, vector_store, embedding_model, 
+                          [random_strategy, diverse_strategy])
+    
     # Ask if the user wants to add a custom paper
     add_custom = input("Would you like to add a custom paper? (y/n): ")
     if add_custom.lower() == 'y':
@@ -577,19 +591,21 @@ def terminal_ui_onboarding(config=None):
         diverse_size = config["diverse_sample_size"]
         print(f"Invalid input. Using default: {diverse_size} papers")
     
-    print("\nInitializing onboarding system...")
-    # Create components with configuration
-    data_source = ArXivDataSource(period=period)
-    embedding_model = OllamaEmbedding(cache_path=config["embedding_cache_path"])
-    vector_store = ChromaVectorStore(embedding_model, path=config["chroma_db_path"])
-    
-    # Create strategies
-    random_strategy = RandomSelectionStrategy(data_source, embedding_model, random_size)
-    diverse_strategy = DiverseSelectionStrategy(data_source, embedding_model, diverse_size)
-    
-    # Create onboarder with strategies
-    onboarder = Onboarder(data_source, vector_store, embedding_model, 
-                          [random_strategy, diverse_strategy])
+    # If user provided custom values, update the components
+    if period != config["period_hours"] or random_size != config["random_sample_size"] or diverse_size != config["diverse_sample_size"]:
+        print("\nUpdating onboarding system with custom parameters...")
+        
+        # Update data source if period changed
+        if period != config["period_hours"]:
+            data_source = ArXivDataSource(period=period)
+            
+        # Update strategies with new sample sizes
+        random_strategy = RandomSelectionStrategy(data_source, embedding_model, random_size)
+        diverse_strategy = DiverseSelectionStrategy(data_source, embedding_model, diverse_size)
+        
+        # Recreate onboarder with updated strategies
+        onboarder = Onboarder(data_source, vector_store, embedding_model, 
+                              [random_strategy, diverse_strategy])
     
     # The progress tracker will be created in prepare_candidates with the appropriate total
     print("Preparing candidate papers...")
