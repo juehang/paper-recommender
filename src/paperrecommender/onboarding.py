@@ -28,12 +28,44 @@ class OnboardingStrategy:
             tuple: (titles, abstracts, links, used_indices)
         """
         raise NotImplementedError("Subclasses must implement this method")
+        
+    def estimate_papers_to_process(self, used_indices=None):
+        """
+        Estimate how many papers this strategy will need to process.
+        
+        Args:
+            used_indices (set): Indices of papers that have already been selected
+            
+        Returns:
+            int: Estimated number of papers to process
+        """
+        raise NotImplementedError("Subclasses must implement this method")
 
 
 class RandomSelectionStrategy(OnboardingStrategy):
     """
     Strategy to randomly select papers.
     """
+    def estimate_papers_to_process(self, used_indices=None):
+        """
+        For random selection, we only process the sample size papers.
+        
+        Args:
+            used_indices (set): Indices of papers that have already been selected
+            
+        Returns:
+            int: Estimated number of papers to process
+        """
+        if used_indices is None:
+            used_indices = set()
+            
+        # Get all available data
+        available_count = len(self.data_source.titles)
+        available_indices = [i for i in range(available_count) if i not in used_indices]
+        
+        # We'll process at most sample_size papers
+        return min(self.sample_size, len(available_indices))
+    
     def select_papers(self, used_indices=None, onboarded_embeddings=None):
         if used_indices is None:
             used_indices = set()
@@ -69,6 +101,25 @@ class DiverseSelectionStrategy(OnboardingStrategy):
     """
     Strategy to select papers that are most diverse from existing ones.
     """
+    def estimate_papers_to_process(self, used_indices=None):
+        """
+        For diverse selection, we need to process all remaining papers.
+        
+        Args:
+            used_indices (set): Indices of papers that have already been selected
+            
+        Returns:
+            int: Estimated number of papers to process
+        """
+        if used_indices is None:
+            used_indices = set()
+            
+        # Get all available data
+        available_count = len(self.data_source.titles)
+        
+        # We need to process all papers that haven't been used yet
+        return available_count - len(used_indices)
+    
     def select_papers(self, used_indices=None, onboarded_embeddings=None):
         if used_indices is None:
             used_indices = set()
@@ -190,9 +241,11 @@ class Onboarder:
         
         # Create a progress tracker for the embedding process if not already set
         if not hasattr(self.embedding_model, 'progress_tracker') or not self.embedding_model.progress_tracker:
-            # Estimate total papers to process - the actual count will be adjusted
-            # by the embedding model based on cache hits
-            total_papers = sum(strategy.sample_size for strategy in self.strategies)
+            # Get a strategy-dependent estimate of papers to process
+            # This will be more accurate than just using sample_size
+            total_papers = sum(strategy.estimate_papers_to_process(self.used_indices) 
+                              for strategy in self.strategies)
+            
             from .common import ProgressTracker
             progress_tracker = ProgressTracker(
                 total=total_papers, 
@@ -360,6 +413,36 @@ class Onboarder:
         """
         self.prepare_candidates()
         return self.commit_onboarding(default_rating)
+        
+    def add_custom_paper(self, title, abstract, link, rating):
+        """
+        Add a custom paper provided by the user.
+        
+        Args:
+            title (str): The title of the paper
+            abstract (str): The abstract of the paper
+            link (str): The link to the paper
+            rating (int): The user's rating of the paper (1-5)
+            
+        Returns:
+            bool: True if the paper was added successfully, False otherwise
+        """
+        # Construct the document string
+        document = construct_string(title, abstract)
+        
+        # Check if the paper already exists in the vector store
+        if self.vector_store.document_exists(document):
+            print(f"Paper already exists in the vector store: {title}")
+            return False
+        
+        # Generate embedding for the paper
+        embedding = self.embedding_model.get_embedding(document)
+        
+        # Add the paper to the vector store
+        self.vector_store.add_document(document, link, rating)
+        
+        print(f"Added custom paper to the vector store: {title}")
+        return True
 
 
 # Factory function with the same interface
@@ -406,6 +489,67 @@ def terminal_ui_onboarding(config=None):
         config = load_config()
     
     print("\n===== PAPER ONBOARDING SYSTEM =====\n")
+    
+    # Ask if the user wants to add a custom paper
+    add_custom = input("Would you like to add a custom paper? (y/n): ")
+    if add_custom.lower() == 'y':
+        custom_papers_added = 0
+        while True:
+            print("\n----- ADD CUSTOM PAPER -----\n")
+            
+            # Get paper details
+            title = input("Enter paper title: ")
+            if not title:
+                print("Title cannot be empty. Skipping this paper.")
+                continue
+                
+            abstract = input("Enter paper abstract: ")
+            if not abstract:
+                print("Abstract cannot be empty. Skipping this paper.")
+                continue
+                
+            link = input("Enter paper link (optional): ")
+            
+            # Get rating
+            while True:
+                try:
+                    rating_input = input("Rate this paper (1-5): ")
+                    rating = int(rating_input)
+                    if 1 <= rating <= 5:
+                        break
+                    else:
+                        print("Please enter a rating between 1 and 5.")
+                except ValueError:
+                    print("Invalid input. Please enter a number between 1 and 5.")
+            
+            # Add the paper
+            success = onboarder.add_custom_paper(title, abstract, link, rating)
+            if success:
+                custom_papers_added += 1
+            
+            # Ask if the user wants to add another paper
+            add_another = input("\nAdd another custom paper? (y/n): ")
+            if add_another.lower() != 'y':
+                break
+        
+        print(f"\nAdded {custom_papers_added} custom papers to the vector store.")
+        
+        # Ask if the user wants to bootstrap the recommender
+        if custom_papers_added > 0:
+            bootstrap_model = input("Would you like to update the recommendation model with the new data? (y/n): ")
+            if bootstrap_model.lower() == 'y':
+                try:
+                    from .recommender import GaussianRegressionRecommender
+                    recommender = GaussianRegressionRecommender(None, vector_store, embedding_model)
+                    recommender.bootstrap(force=True)
+                    print("Recommendation model updated.")
+                except Exception as e:
+                    print(f"Failed to bootstrap recommender: {e}")
+        
+        # Ask if the user wants to continue with the automated onboarding
+        continue_auto = input("\nContinue with automated paper onboarding? (y/n): ")
+        if continue_auto.lower() != 'y':
+            return
     
     # Get period from user or use config
     try:

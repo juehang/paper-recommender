@@ -2,7 +2,7 @@ import os
 import pickle
 import numpy as np
 from sklearn.gaussian_process import GaussianProcessRegressor
-from sklearn.gaussian_process.kernels import RBF, ConstantKernel as C
+from sklearn.gaussian_process.kernels import RBF, WhiteKernel
 from .common import construct_string
 
 class Recommender:
@@ -146,7 +146,8 @@ class GaussianRegressionRecommender(Recommender):
             
         # Fit the Gaussian Process Regression model
         # Define the kernel with hyperparameters
-        kernel = C(1.0, (1e-3, 1e3)) * RBF(1.0, (1e-2, 1e2))
+        # Using RBF kernel for smoothness + WhiteKernel for observation noise
+        kernel = RBF(length_scale=1.0, length_scale_bounds=(1e-2, 1e2)) + WhiteKernel(noise_level=1.0, noise_level_bounds=(1e-5, 1e1))
         
         # Create and fit the model
         self.model = GaussianProcessRegressor(kernel=kernel, n_restarts_optimizer=9)
