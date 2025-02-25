@@ -157,13 +157,17 @@ class GaussianRegressionRecommender(Recommender):
         
         return True
     
-    def recommend(self, num_recommendations=10):
+    def recommend(self, num_recommendations=10, exploration_weight=1.0):
         """
         Recommend new papers from the data source.
         
         Args:
             num_recommendations (int): Number of recommendations to return
-            
+            exploration_weight (float): Weight for the exploration term in UCB acquisition.
+                0.0 means pure exploitation (use predicted rating only)
+                Higher values encourage exploration of uncertain predictions
+                Default is 1.0 for balanced exploration-exploitation
+                
         Returns:
             list: A list of recommended papers with predicted ratings
         """
@@ -219,6 +223,9 @@ class GaussianRegressionRecommender(Recommender):
             # Predict rating
             predicted_rating, std_dev = self.model.predict(X_pred.mean(axis=0).reshape(1, -1), return_std=True)
             
+            # Calculate acquisition function value (UCB)
+            acquisition_value = float(predicted_rating[0]) + exploration_weight * float(std_dev[0])
+            
             # Add to recommendations
             recommendations.append({
                 "title": paper["title"],
@@ -226,17 +233,18 @@ class GaussianRegressionRecommender(Recommender):
                 "link": paper["link"],
                 "document": paper["document"],
                 "predicted_rating": float(predicted_rating[0]),
-                "confidence": 1.0 - float(std_dev[0]) / 5.0  # Normalize to 0-1 range
+                "std_dev": float(std_dev[0]),
+                "acquisition_value": acquisition_value
             })
         
-        # Sort by predicted rating (descending)
-        recommendations.sort(key=lambda x: x["predicted_rating"], reverse=True)
+        # Sort by acquisition value (descending) instead of just predicted rating
+        recommendations.sort(key=lambda x: x["acquisition_value"], reverse=True)
         
         # Return top N recommendations
         return recommendations[:num_recommendations]
 
 
-def create_recommender(data_source, vector_store, embedding_model, max_samples=50):
+def create_recommender(data_source, vector_store, embedding_model, max_samples=50, model_path=None):
     """
     Create and initialize a recommender.
     
@@ -245,35 +253,50 @@ def create_recommender(data_source, vector_store, embedding_model, max_samples=5
         vector_store: The vector store containing user-rated papers
         embedding_model: The embedding model to use for new papers
         max_samples: Maximum number of samples to use for fitting the model
+        model_path: Path to the model pickle file
         
     Returns:
         GaussianRegressionRecommender: An initialized recommender
     """
     recommender = GaussianRegressionRecommender(
-        data_source, vector_store, embedding_model, max_samples
+        data_source, vector_store, embedding_model, max_samples, model_path
     )
     return recommender
 
 
-def bootstrap_recommender():
+def bootstrap_recommender(config=None):
     """
     Run a simple CLI interface for bootstrapping the recommender.
+    
+    Args:
+        config (dict, optional): Configuration dictionary
     """
     from .data_sources import ArXivDataSource
     from .embeddings import OllamaEmbedding
     from .vector_store import ChromaVectorStore
+    from .config import load_config
+    
+    # Load configuration if not provided
+    if config is None:
+        config = load_config()
     
     print("\n===== BOOTSTRAPPING RECOMMENDATION SYSTEM =====\n")
     
     print("Initializing components...")
     
     # Create components
-    data_source = ArXivDataSource()
+    data_source = ArXivDataSource(period=config["period_hours"])
     embedding_model = OllamaEmbedding()
-    vector_store = ChromaVectorStore(embedding_model)
+    vector_store = ChromaVectorStore(embedding_model, path=config["chroma_db_path"])
     
     # Create recommender
-    recommender = GaussianRegressionRecommender(data_source, vector_store, embedding_model)
+    recommender = GaussianRegressionRecommender(
+        data_source, 
+        vector_store, 
+        embedding_model,
+        max_samples=config["max_samples"],
+        model_path=config["model_path"]
+    )
     
     print("Bootstrapping model...")
     success = recommender.bootstrap(force=True)
@@ -284,42 +307,72 @@ def bootstrap_recommender():
         print("\nFailed to bootstrap model. Please onboard more papers first.")
 
 
-def recommend_papers():
+def recommend_papers(config=None):
     """
     Run a simple CLI interface for paper recommendations.
+    
+    Args:
+        config (dict, optional): Configuration dictionary
     """
     from .data_sources import ArXivDataSource
     from .embeddings import OllamaEmbedding
     from .vector_store import ChromaVectorStore
+    from .config import load_config
+    
+    # Load configuration if not provided
+    if config is None:
+        config = load_config()
     
     print("\n===== PAPER RECOMMENDATION SYSTEM =====\n")
     
-    # Get period from user
+    # Get period from user or use config
     try:
-        period = int(input("Enter time period in hours for paper retrieval [default: 48]: ") or "48")
+        period_prompt = f"Enter time period in hours for paper retrieval [default: {config['period_hours']}]: "
+        period_input = input(period_prompt)
+        period = int(period_input) if period_input else config["period_hours"]
     except ValueError:
-        period = 48
-        print("Invalid input. Using default: 48 hours")
+        period = config["period_hours"]
+        print(f"Invalid input. Using default: {period} hours")
     
     # Get number of recommendations
     try:
-        num_recommendations = int(input("Enter number of recommendations to show [default: 5]: ") or "5")
+        num_prompt = f"Enter number of recommendations to show [default: {config['num_recommendations']}]: "
+        num_input = input(num_prompt)
+        num_recommendations = int(num_input) if num_input else config["num_recommendations"]
     except ValueError:
-        num_recommendations = 5
-        print("Invalid input. Using default: 5 recommendations")
+        num_recommendations = config["num_recommendations"]
+        print(f"Invalid input. Using default: {num_recommendations} recommendations")
+    
+    # Get exploration weight
+    try:
+        exp_prompt = f"Enter exploration weight (0.0 for pure exploitation) [default: {config['exploration_weight']}]: "
+        exp_input = input(exp_prompt)
+        exploration_weight = float(exp_input) if exp_input else config["exploration_weight"]
+    except ValueError:
+        exploration_weight = config["exploration_weight"]
+        print(f"Invalid input. Using default: {exploration_weight} (balanced exploration-exploitation)")
     
     print("\nInitializing recommendation system...")
     
     # Create components
     data_source = ArXivDataSource(period=period)
     embedding_model = OllamaEmbedding()
-    vector_store = ChromaVectorStore(embedding_model)
+    vector_store = ChromaVectorStore(embedding_model, path=config["chroma_db_path"])
     
     # Create recommender
-    recommender = create_recommender(data_source, vector_store, embedding_model)
+    recommender = create_recommender(
+        data_source, 
+        vector_store, 
+        embedding_model,
+        max_samples=config["max_samples"],
+        model_path=config["model_path"]
+    )
     
     print("Generating recommendations...")
-    recommendations = recommender.recommend(num_recommendations=num_recommendations)
+    recommendations = recommender.recommend(
+        num_recommendations=num_recommendations,
+        exploration_weight=exploration_weight
+    )
     
     if not recommendations:
         print("\nNo recommendations available. Please onboard more papers first.")
@@ -327,12 +380,16 @@ def recommend_papers():
     
     print(f"\n----- TOP {len(recommendations)} RECOMMENDATIONS -----\n")
     
+    # Track which papers were rated
+    rated_papers = []
+    
     for i, rec in enumerate(recommendations):
         print(f"Recommendation {i+1}:")
         print(f"Title: {rec['title']}")
         print(f"Link: {rec['link']}")
         print(f"Predicted Rating: {rec['predicted_rating']:.2f}/5.0")
-        print(f"Confidence: {rec['confidence']:.2f}")
+        print(f"Uncertainty (std dev): {rec['std_dev']:.4f}")
+        print(f"Acquisition Value: {rec['acquisition_value']:.4f}")
         
         # Print a preview of the abstract (first 150 chars)
         abstract_preview = rec['abstract'][:150] + "..." if len(rec['abstract']) > 150 else rec['abstract']
@@ -345,4 +402,44 @@ def recommend_papers():
             print(rec['abstract'])
             input("\nPress Enter to continue...")
         
+        # Ask if user wants to rate this paper
+        rate_paper = input("\nWould you like to rate this paper? (y/n): ")
+        if rate_paper.lower() == 'y':
+            while True:
+                try:
+                    rating = int(input("Enter rating (1-5): "))
+                    if 1 <= rating <= 5:
+                        # Add to list of rated papers
+                        rated_papers.append({
+                            "document": rec["document"],
+                            "link": rec["link"],
+                            "rating": rating
+                        })
+                        print(f"Paper rated: {rating}/5")
+                        break
+                    else:
+                        print("Please enter a rating between 1 and 5.")
+                except ValueError:
+                    print("Invalid input. Please enter a number between 1 and 5.")
+        
         print("\n" + "-" * 50 + "\n")
+    
+    # If any papers were rated, ask if user wants to add them to the vector store
+    if rated_papers:
+        add_to_store = input("\nWould you like to add the rated papers to your vector store? (y/n): ")
+        if add_to_store.lower() == 'y':
+            # Add papers to vector store
+            for paper in rated_papers:
+                vector_store.add_document(
+                    paper["document"],
+                    paper["link"],
+                    paper["rating"]
+                )
+            
+            print(f"\nAdded {len(rated_papers)} papers to the vector store.")
+            
+            # Ask if user wants to bootstrap the recommender
+            bootstrap_model = input("Would you like to update the recommendation model with the new data? (y/n): ")
+            if bootstrap_model.lower() == 'y':
+                recommender.bootstrap(force=True)
+                print("Recommendation model updated.")

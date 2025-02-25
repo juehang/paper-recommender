@@ -345,7 +345,7 @@ class Onboarder:
 
 
 # Factory function with the same interface
-def create_onboarding_system(period=48, random_sample_size=5, diverse_sample_size=5):
+def create_onboarding_system(period=48, random_sample_size=5, diverse_sample_size=5, chroma_db_path=None):
     """
     Create and return a complete onboarding system.
     
@@ -353,6 +353,7 @@ def create_onboarding_system(period=48, random_sample_size=5, diverse_sample_siz
         period (int): Time period in hours for fetching recent papers
         random_sample_size (int): Number of papers for random selection
         diverse_sample_size (int): Number of papers for diverse selection
+        chroma_db_path (str, optional): Path to ChromaDB directory
         
     Returns:
         tuple: (data_source, embedding_model, vector_store, onboarder)
@@ -360,7 +361,7 @@ def create_onboarding_system(period=48, random_sample_size=5, diverse_sample_siz
     # Create the components
     data_source = ArXivDataSource(period=period)
     embedding_model = OllamaEmbedding()
-    vector_store = ChromaVectorStore(embedding_model)
+    vector_store = ChromaVectorStore(embedding_model, path=chroma_db_path)
     
     # Create strategies
     random_strategy = RandomSelectionStrategy(data_source, embedding_model, random_sample_size)
@@ -372,38 +373,60 @@ def create_onboarding_system(period=48, random_sample_size=5, diverse_sample_siz
     
     return data_source, embedding_model, vector_store, onboarder
 
-def terminal_ui_onboarding():
+def terminal_ui_onboarding(config=None):
     """
     Run a simple terminal-based UI for the onboarding process.
+    
+    Args:
+        config (dict, optional): Configuration dictionary
     """
+    from .config import load_config
+    
+    # Load configuration if not provided
+    if config is None:
+        config = load_config()
+    
     print("\n===== PAPER ONBOARDING SYSTEM =====\n")
     
-    # Get period from user
+    # Get period from user or use config
     try:
-        period = int(input("Enter time period in hours for paper retrieval [default: 48]: ") or "48")
+        period_prompt = f"Enter time period in hours for paper retrieval [default: {config['period_hours']}]: "
+        period_input = input(period_prompt)
+        period = int(period_input) if period_input else config["period_hours"]
     except ValueError:
-        period = 48
-        print("Invalid input. Using default: 48 hours")
+        period = config["period_hours"]
+        print(f"Invalid input. Using default: {period} hours")
     
-    # Get sample sizes from user
+    # Get sample sizes from user or use config
     try:
-        random_size = int(input("Enter number of random papers to select [default: 5]: ") or "5")
+        random_prompt = f"Enter number of random papers to select [default: {config['random_sample_size']}]: "
+        random_input = input(random_prompt)
+        random_size = int(random_input) if random_input else config["random_sample_size"]
     except ValueError:
-        random_size = 5
-        print("Invalid input. Using default: 5 papers")
+        random_size = config["random_sample_size"]
+        print(f"Invalid input. Using default: {random_size} papers")
         
     try:
-        diverse_size = int(input("Enter number of diverse papers to select [default: 5]: ") or "5")
+        diverse_prompt = f"Enter number of diverse papers to select [default: {config['diverse_sample_size']}]: "
+        diverse_input = input(diverse_prompt)
+        diverse_size = int(diverse_input) if diverse_input else config["diverse_sample_size"]
     except ValueError:
-        diverse_size = 5
-        print("Invalid input. Using default: 5 papers")
+        diverse_size = config["diverse_sample_size"]
+        print(f"Invalid input. Using default: {diverse_size} papers")
     
     print("\nInitializing onboarding system...")
-    _, embedding_model, vector_store, onboarder = create_onboarding_system(
-        period=period,
-        random_sample_size=random_size,
-        diverse_sample_size=diverse_size
-    )
+    # Create components with configuration
+    data_source = ArXivDataSource(period=period)
+    embedding_model = OllamaEmbedding()
+    vector_store = ChromaVectorStore(embedding_model, path=config["chroma_db_path"])
+    
+    # Create strategies
+    random_strategy = RandomSelectionStrategy(data_source, embedding_model, random_size)
+    diverse_strategy = DiverseSelectionStrategy(data_source, embedding_model, diverse_size)
+    
+    # Create onboarder with strategies
+    onboarder = Onboarder(data_source, vector_store, embedding_model, 
+                          [random_strategy, diverse_strategy])
     
     # Create a progress tracker for the embedding model
     # tqdm will handle the terminal display automatically
