@@ -208,8 +208,26 @@ class Onboarder:
                 self.used_indices, self.onboarded_embeddings
             )
             
-            strategy_result = []
+            # Filter out papers that already exist in the vector store
+            filtered_titles = []
+            filtered_abstracts = []
+            filtered_links = []
+            filtered_count = 0
+            
             for title, abstract, link in zip(titles, abstracts, links):
+                document = construct_string(title, abstract)
+                if not self.vector_store.document_exists(document):
+                    filtered_titles.append(title)
+                    filtered_abstracts.append(abstract)
+                    filtered_links.append(link)
+                else:
+                    filtered_count += 1
+            
+            if filtered_count > 0:
+                print(f"Filtered out {filtered_count} papers that already exist in the vector store.")
+            
+            strategy_result = []
+            for title, abstract, link in zip(filtered_titles, filtered_abstracts, filtered_links):
                 document = construct_string(title, abstract)
                 embedding = self.embedding_model.get_embedding(document)
                 

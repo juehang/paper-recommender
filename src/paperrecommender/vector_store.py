@@ -76,3 +76,19 @@ class ChromaVectorStore(VectorStore):
         return self.collection.get(
             include=["embeddings", "metadatas", "documents"]
         )
+        
+    def document_exists(self, document):
+        """
+        Check if a document already exists in the vector store.
+        
+        Args:
+            document (str): The document to check
+            
+        Returns:
+            bool: True if the document exists, False otherwise
+        """
+        # Get all documents
+        all_docs = self.get_all_documents()
+        
+        # Check if the document exists
+        return document in all_docs["documents"]
