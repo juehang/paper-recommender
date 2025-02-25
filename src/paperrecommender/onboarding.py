@@ -280,13 +280,14 @@ class Onboarder:
                 success_count += 1
         return success_count
     
-    def commit_onboarding(self, default_rating=0):
+    def commit_onboarding(self, default_rating=0, bootstrap_recommender=True):
         """
         Commit the onboarding process by storing papers with their ratings.
         Papers without ratings will use the default_rating.
         
         Args:
             default_rating: Rating to use for papers without an explicit rating
+            bootstrap_recommender: Whether to bootstrap the recommender after onboarding
             
         Returns:
             dict: Statistics about the onboarding process
@@ -311,6 +312,16 @@ class Onboarder:
         
         # Clear the staging area
         self.selected_papers = []
+        
+        # Bootstrap the recommender if requested
+        if bootstrap_recommender and total_count > 0:
+            try:
+                from .recommender import GaussianRegressionRecommender
+                recommender = GaussianRegressionRecommender(None, self.vector_store, self.embedding_model)
+                recommender.bootstrap(force=True)
+                print("Recommender model bootstrapped with new data.")
+            except Exception as e:
+                print(f"Failed to bootstrap recommender: {e}")
         
         return {
             'strategy_counts': strategy_counts,

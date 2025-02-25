@@ -65,3 +65,14 @@ class ChromaVectorStore(VectorStore):
             include=["metadatas", "distances"],
             )
         return results
+        
+    def get_all_documents(self):
+        """
+        Retrieve all documents from the collection with their metadata.
+        
+        Returns:
+            dict: A dictionary containing all documents, their IDs, embeddings, and metadata
+        """
+        return self.collection.get(
+            include=["embeddings", "metadatas", "documents"]
+        )
