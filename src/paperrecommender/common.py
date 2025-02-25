@@ -1,4 +1,5 @@
 import numpy as np
+import tqdm
 
 def cosine_similarity(vec1, vec2):
     """
@@ -33,3 +34,99 @@ def construct_string(title, abstract):
            str: A combined string of the title and abstract.
     """
     return f"Title: {title}\nAbstract: {abstract}"
+
+class ProgressTracker:
+    """
+    A flexible progress tracker that can be used programmatically by different UI implementations.
+    Uses tqdm for efficient progress display.
+    """
+    def __init__(self, total=0, description="Processing", disable=False):
+        """
+        Initialize a progress tracker.
+        
+        Args:
+            total (int): Total number of items to process
+            description (str): Description of the progress operation
+            disable (bool): Whether to disable the progress display
+        """
+        self.total = total
+        self.current = 0
+        self.description = description
+        self.disable = disable
+        self.tqdm_instance = None
+        self.callbacks = []
+        self._initialize_tqdm()
+    
+    def _initialize_tqdm(self):
+        """Initialize or reinitialize the tqdm instance"""
+        if self.tqdm_instance:
+            self.tqdm_instance.close()
+        
+        self.tqdm_instance = tqdm.tqdm(
+            total=self.total,
+            desc=self.description,
+            disable=self.disable
+        )
+    
+    def update(self, value=1):
+        """
+        Update the progress.
+        
+        Args:
+            value (int/float): Amount to increment progress by
+        """
+        if value <= 0:
+            return
+            
+        self.current += value
+        self.tqdm_instance.update(value)
+        self._notify_callbacks()
+    
+    def update_to(self, value):
+        """
+        Update progress to a specific absolute value.
+        
+        Args:
+            value (int/float): Absolute progress value to set
+        """
+        if value < self.current:
+            return
+            
+        increment = value - self.current
+        self.update(increment)
+    
+    def reset(self, total=None, description=None):
+        """
+        Reset the progress tracker.
+        
+        Args:
+            total (int, optional): New total value
+            description (str, optional): New description
+        """
+        self.current = 0
+        if total is not None:
+            self.total = total
+        if description is not None:
+            self.description = description
+            
+        self._initialize_tqdm()
+        self._notify_callbacks()
+    
+    def register_callback(self, callback):
+        """
+        Register a callback function that will be called on updates.
+        
+        Args:
+            callback: Function that takes (current, total, description)
+        """
+        self.callbacks.append(callback)
+    
+    def _notify_callbacks(self):
+        """Notify all registered callbacks of the current progress"""
+        for callback in self.callbacks:
+            callback(self.current, self.total, self.description)
+    
+    def close(self):
+        """Close the progress tracker and its tqdm instance"""
+        if self.tqdm_instance:
+            self.tqdm_instance.close()

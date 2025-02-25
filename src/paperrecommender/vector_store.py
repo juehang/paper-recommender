@@ -1,4 +1,5 @@
 import chromadb
+import uuid
 
 class VectorStore:
     def __init__(self, embedding):
@@ -9,26 +10,44 @@ class ChromaVectorStore(VectorStore):
     A vector store that uses ChromaDB.
     """
     def __init__(self, embedding, path=None):
-        self.client = chromadb.Client(path=path)
+        if path:
+            self.client = chromadb.PersistentClient(path=path)
+        else:
+            self.client = chromadb.Client()
         super().__init__(embedding)
+
+        # Define a class with exactly the interface ChromaDB expects
+        class EmbeddingFunctionWrapper:
+            def __init__(self, embedding_model):
+                self.embedding_model = embedding_model
+                
+            def __call__(self, input):
+                # This method has exactly the signature ChromaDB expects
+                return self.embedding_model.get_embedding(input)
+        
+        # Create an instance of our wrapper class
+        embedding_function = EmbeddingFunctionWrapper(embedding)
+
         self.collection = self.client.get_or_create_collection(
             name="papers",
-            embedding_function=self.embedding.get_embedding,
+            embedding_function=embedding_function,
             metadata={"hnsw_space": "cosine"},
             )
 
-    def add_document(self, document, links, rating):
+    def add_document(self, document, link, rating):
         """
         Adds a document to the vector store.
         Args:
            document (string): The document to add.
-            links (list): A list of URLs associated with the document.
+            link (string): URL associated with the document.
         Returns:
             None
         """
+        doc_id = str(uuid.uuid4())
         self.collection.add(
+            ids=[doc_id],
             documents=[document],
-            metadatas={"links": links, "rating": rating},
+            metadatas={"link": link, "rating": rating},
             )
         return None
     
