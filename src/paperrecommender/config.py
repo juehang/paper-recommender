@@ -6,6 +6,7 @@ from pathlib import Path
 DEFAULT_CONFIG = {
     "chroma_db_path": os.path.expanduser("~/.paper_recommender/chroma_db"),
     "model_path": os.path.expanduser("~/.paper_recommender/gp_model.pkl"),
+    "embedding_cache_path": os.path.expanduser("~/.paper_recommender/embedding_cache.pkl"),
     "exploration_weight": 1.0,
     "max_samples": 1000,
     "period_hours": 48,
@@ -102,6 +103,7 @@ def update_config_from_args(config, args):
     arg_to_config = {
         "chroma_db_path": "chroma_db_path",
         "model_path": "model_path",
+        "embedding_cache_path": "embedding_cache_path",
         "exploration_weight": "exploration_weight",
         "max_samples": "max_samples",
         "period_hours": "period_hours",

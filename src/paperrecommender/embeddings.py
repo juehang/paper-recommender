@@ -1,14 +1,26 @@
 import requests
 import numpy as np
+import os
+import pickle
 
 class EmbeddingModel:
     """
     Base class for embedding models.
     """
-    def __init__(self, max_cache_size=1000):
+    def __init__(self, max_cache_size=1000, cache_path=None):
         self.progress_tracker = None
         self.embedding_cache = {}  # Cache for storing embeddings
         self.max_cache_size = max_cache_size
+        self.cache_path = cache_path
+        
+        # Load cache from disk if it exists
+        if cache_path and os.path.exists(cache_path):
+            try:
+                with open(cache_path, 'rb') as f:
+                    self.embedding_cache = pickle.load(f)
+                print(f"Loaded {len(self.embedding_cache)} embeddings from cache at {cache_path}")
+            except Exception as e:
+                print(f"Error loading embedding cache: {e}")
         
     def set_progress_tracker(self, tracker):
         """Set a progress tracker for this embedding model"""
@@ -21,6 +33,16 @@ class EmbeddingModel:
             items_to_remove = len(self.embedding_cache) - self.max_cache_size
             for key in list(self.embedding_cache.keys())[:items_to_remove]:
                 del self.embedding_cache[key]
+    
+    def _save_cache(self):
+        """Save the cache to disk if a cache path is set"""
+        if self.cache_path:
+            try:
+                os.makedirs(os.path.dirname(self.cache_path), exist_ok=True)
+                with open(self.cache_path, 'wb') as f:
+                    pickle.dump(self.embedding_cache, f)
+            except Exception as e:
+                print(f"Error saving embedding cache: {e}")
         
     def generate_embedding(self, text, url, model):
         raise NotImplementedError("This method should be overridden by subclasses.")
@@ -41,6 +63,9 @@ class EmbeddingModel:
             
             # Manage cache size
             self._manage_cache_size()
+            
+            # Save cache to disk
+            self._save_cache()
             
             # Update progress if tracker exists
             if self.progress_tracker:
@@ -69,6 +94,9 @@ class EmbeddingModel:
                     # Manage cache size
                     self._manage_cache_size()
                     
+                    # Save cache to disk
+                    self._save_cache()
+                    
                     # Update progress only for newly generated embeddings
                     if self.progress_tracker:
                         self.progress_tracker.update()
@@ -79,8 +107,9 @@ class OllamaEmbedding(EmbeddingModel):
     """
     Class for generating embeddings using the Ollama API.
     """
-    def __init__(self, url="http://localhost:11434/api/embeddings", model="nomic-embed-text", max_cache_size=1000):
-        super().__init__(max_cache_size=max_cache_size)
+    def __init__(self, url="http://localhost:11434/api/embeddings", model="nomic-embed-text", 
+                 max_cache_size=1000, cache_path=None):
+        super().__init__(max_cache_size=max_cache_size, cache_path=cache_path)
         self.url = url
         self.model = model
     

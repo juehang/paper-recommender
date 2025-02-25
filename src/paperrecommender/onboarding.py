@@ -363,7 +363,7 @@ class Onboarder:
 
 
 # Factory function with the same interface
-def create_onboarding_system(period=48, random_sample_size=5, diverse_sample_size=5, chroma_db_path=None):
+def create_onboarding_system(period=48, random_sample_size=5, diverse_sample_size=5, chroma_db_path=None, embedding_cache_path=None):
     """
     Create and return a complete onboarding system.
     
@@ -372,13 +372,14 @@ def create_onboarding_system(period=48, random_sample_size=5, diverse_sample_siz
         random_sample_size (int): Number of papers for random selection
         diverse_sample_size (int): Number of papers for diverse selection
         chroma_db_path (str, optional): Path to ChromaDB directory
+        embedding_cache_path (str, optional): Path to embedding cache file
         
     Returns:
         tuple: (data_source, embedding_model, vector_store, onboarder)
     """
     # Create the components
     data_source = ArXivDataSource(period=period)
-    embedding_model = OllamaEmbedding()
+    embedding_model = OllamaEmbedding(cache_path=embedding_cache_path)
     vector_store = ChromaVectorStore(embedding_model, path=chroma_db_path)
     
     # Create strategies
@@ -435,7 +436,7 @@ def terminal_ui_onboarding(config=None):
     print("\nInitializing onboarding system...")
     # Create components with configuration
     data_source = ArXivDataSource(period=period)
-    embedding_model = OllamaEmbedding()
+    embedding_model = OllamaEmbedding(cache_path=config["embedding_cache_path"])
     vector_store = ChromaVectorStore(embedding_model, path=config["chroma_db_path"])
     
     # Create strategies

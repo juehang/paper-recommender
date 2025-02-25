@@ -27,6 +27,7 @@ def main():
     # Override configuration parameters
     parser.add_argument("--chroma-db-path", help="Path to ChromaDB directory")
     parser.add_argument("--model-path", help="Path to model pickle file")
+    parser.add_argument("--embedding-cache-path", help="Path to embedding cache file")
     parser.add_argument("--exploration-weight", type=float, help="Exploration weight for recommendations")
     parser.add_argument("--max-samples", type=int, help="Maximum number of samples for similarity search")
     parser.add_argument("--period-hours", type=int, help="Time period in hours for paper retrieval")
@@ -44,7 +45,7 @@ def main():
     
     # Create components with configuration
     data_source = ArXivDataSource(period=config["period_hours"])
-    embedding_model = OllamaEmbedding()
+    embedding_model = OllamaEmbedding(cache_path=config["embedding_cache_path"])
     vector_store = ChromaVectorStore(embedding_model, path=config["chroma_db_path"])
     
     # Determine what to run
@@ -60,7 +61,8 @@ def main():
             period=config["period_hours"],
             random_sample_size=config["random_sample_size"],
             diverse_sample_size=config["diverse_sample_size"],
-            chroma_db_path=config["chroma_db_path"]
+            chroma_db_path=config["chroma_db_path"],
+            embedding_cache_path=config["embedding_cache_path"]
         )
         terminal_ui_onboarding(config)
     elif args.recommend:
@@ -81,7 +83,8 @@ def main():
                 period=config["period_hours"],
                 random_sample_size=config["random_sample_size"],
                 diverse_sample_size=config["diverse_sample_size"],
-                chroma_db_path=config["chroma_db_path"]
+                chroma_db_path=config["chroma_db_path"],
+                embedding_cache_path=config["embedding_cache_path"]
             )
             terminal_ui_onboarding(config)
         else:
