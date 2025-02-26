@@ -142,15 +142,22 @@ class DiverseSelectionStrategy(OnboardingStrategy):
         # The embedding model will automatically handle progress tracking and caching
         # We don't need to reset the total here as the embedding model will count
         # only uncached items when calculating progress
+        progress_tracker_set = False
         if hasattr(self.embedding_model, 'progress_tracker') and self.embedding_model.progress_tracker:
             self.embedding_model.progress_tracker.reset(
                 description="Generating embeddings for diverse selection"
             )
+            progress_tracker_set = True
         
-        for i in remaining_indices:
-            text = construct_string(titles[i], abstracts[i])
-            embedding = self.embedding_model.get_embedding(text)
-            remaining_embeddings.append((i, embedding))
+        try:
+            for i in remaining_indices:
+                text = construct_string(titles[i], abstracts[i])
+                embedding = self.embedding_model.get_embedding(text)
+                remaining_embeddings.append((i, embedding))
+        finally:
+            # Close the progress tracker if we set it
+            if progress_tracker_set and hasattr(self.embedding_model, 'progress_tracker') and self.embedding_model.progress_tracker:
+                self.embedding_model.progress_tracker.close()
         
         # If we don't have any onboarded embeddings yet, just pick randomly
         if not onboarded_embeddings:
@@ -255,49 +262,56 @@ class Onboarder:
         
         strategy_papers = []
         
-        # Apply each strategy in sequence
-        for i, strategy in enumerate(self.strategies):
-            titles, abstracts, links, self.used_indices = strategy.select_papers(
-                self.used_indices, self.onboarded_embeddings
-            )
-            
-            # Filter out papers that already exist in the vector store
-            filtered_titles = []
-            filtered_abstracts = []
-            filtered_links = []
-            filtered_count = 0
-            
-            for title, abstract, link in zip(titles, abstracts, links):
-                document = construct_string(title, abstract)
-                if not self.vector_store.document_exists(document):
-                    filtered_titles.append(title)
-                    filtered_abstracts.append(abstract)
-                    filtered_links.append(link)
-                else:
-                    filtered_count += 1
-            
-            if filtered_count > 0:
-                print(f"Filtered out {filtered_count} papers that already exist in the vector store.")
-            
-            strategy_result = []
-            for title, abstract, link in zip(filtered_titles, filtered_abstracts, filtered_links):
-                document = construct_string(title, abstract)
-                embedding = self.embedding_model.get_embedding(document)
+        try:
+            # Apply each strategy in sequence
+            for i, strategy in enumerate(self.strategies):
+                titles, abstracts, links, self.used_indices = strategy.select_papers(
+                    self.used_indices, self.onboarded_embeddings
+                )
                 
-                paper = {
-                    'title': title,
-                    'abstract': abstract,
-                    'link': link,
-                    'document': document,
-                    'embedding': embedding,
-                    'strategy_index': i,
-                    'rating': None  # To be filled by the UI
-                }
-                strategy_result.append(paper)
-                self.selected_papers.append(paper)
-                self.onboarded_embeddings.append(embedding)
+                # Filter out papers that already exist in the vector store
+                filtered_titles = []
+                filtered_abstracts = []
+                filtered_links = []
+                filtered_count = 0
                 
-            strategy_papers.append(strategy_result)
+                for title, abstract, link in zip(titles, abstracts, links):
+                    document = construct_string(title, abstract)
+                    if not self.vector_store.document_exists(document):
+                        filtered_titles.append(title)
+                        filtered_abstracts.append(abstract)
+                        filtered_links.append(link)
+                    else:
+                        filtered_count += 1
+                
+                if filtered_count > 0:
+                    print(f"Filtered out {filtered_count} papers that already exist in the vector store.")
+                
+                strategy_result = []
+                for title, abstract, link in zip(filtered_titles, filtered_abstracts, filtered_links):
+                    document = construct_string(title, abstract)
+                    embedding = self.embedding_model.get_embedding(document)
+                    
+                    paper = {
+                        'title': title,
+                        'abstract': abstract,
+                        'link': link,
+                        'document': document,
+                        'embedding': embedding,
+                        'strategy_index': i,
+                        'rating': None  # To be filled by the UI
+                    }
+                    strategy_result.append(paper)
+                    self.selected_papers.append(paper)
+                    self.onboarded_embeddings.append(embedding)
+                    
+                strategy_papers.append(strategy_result)
+        finally:
+            # Ensure progress tracker is closed even if an exception occurs
+            if hasattr(self.embedding_model, 'progress_tracker') and self.embedding_model.progress_tracker:
+                self.embedding_model.progress_tracker.close()
+                # Reset the progress tracker in the embedding model
+                self.embedding_model.set_progress_tracker(None)
             
         return strategy_papers
     
@@ -436,10 +450,16 @@ class Onboarder:
             return False
         
         # Generate embedding for the paper
-        embedding = self.embedding_model.get_embedding(document)
-        
-        # Add the paper to the vector store
-        self.vector_store.add_document(document, link, rating)
+        try:
+            embedding = self.embedding_model.get_embedding(document)
+            
+            # Add the paper to the vector store
+            self.vector_store.add_document(document, link, rating)
+        finally:
+            # Ensure progress tracker is closed if it exists
+            if hasattr(self.embedding_model, 'progress_tracker') and self.embedding_model.progress_tracker:
+                self.embedding_model.progress_tracker.close()
+                self.embedding_model.set_progress_tracker(None)
         
         print(f"Added custom paper to the vector store: {title}")
         return True

@@ -1,6 +1,7 @@
 import os
 import pickle
 import numpy as np
+from scipy import stats
 from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.gaussian_process.kernels import RBF, WhiteKernel
 from .common import construct_string
@@ -81,9 +82,10 @@ class GaussianRegressionRecommender(Recommender):
     def _get_training_data(self):
         """
         Get training data for the Gaussian Process Regression model.
+        The model will learn to predict the variance between ratings as a function of similarity.
         
         Returns:
-            tuple: (X, y) where X is similarity scores and y is ratings
+            tuple: (X, y) where X is similarity scores and y is rating variances
         """
         # Get all documents from the vector store
         all_docs = self.vector_store.get_all_documents()
@@ -92,35 +94,41 @@ class GaussianRegressionRecommender(Recommender):
         if len(all_docs["ids"]) < 5:  # Arbitrary minimum threshold
             return None, None
             
-        # We'll use each document in the vector store as a query
-        # and collect similarity scores and ratings
+        # We'll collect similarity scores and rating variances
         X = []  # Similarity scores
-        y = []  # Ratings
+        y = []  # Rating variances (squared differences)
         
         # Sample a subset of documents to use as queries
-        # This prevents the bootstrapping process from being too slow
         sample_size = min(20, len(all_docs["ids"]))
         sample_indices = np.random.choice(len(all_docs["ids"]), sample_size, replace=False)
         
         for idx in sample_indices:
-            # Use the document as a query
+            # Get the query document and its rating
             query_text = all_docs["documents"][idx]
+            query_rating = float(all_docs["metadatas"][idx].get("rating", 0))
+            
+            # Search for similar documents
             results = self.vector_store.search([query_text], num_results=self.max_samples)
             
             if "distances" in results and results["distances"]:
-                # Convert distances to similarities
-                similarities = [1 - dist for dist in results["distances"][0]]
-                ratings = [float(meta.get("rating", 0)) for meta in results["metadatas"][0]]
-                
-                X.extend(similarities)
-                y.extend(ratings)
+                # For each similar document
+                for i, (distance, metadata) in enumerate(zip(results["distances"][0], results["metadatas"][0])):
+                    similarity = 1 - distance
+                    other_rating = float(metadata.get("rating", 0))
+                    
+                    # Calculate squared difference between ratings
+                    rating_variance = (query_rating - other_rating) ** 2
+                    
+                    # Add to training data
+                    X.append([similarity])  # Feature: similarity
+                    y.append(rating_variance)  # Target: variance between ratings
         
         # If we don't have enough data points, we can't fit the model
         if len(X) < 10:  # Arbitrary minimum threshold
             return None, None
             
-        # Reshape X for scikit-learn (n_samples, n_features)
-        X = np.array(X).reshape(-1, 1)
+        # Convert to numpy arrays
+        X = np.array(X)
         y = np.array(y)
         
         return X, y
@@ -158,7 +166,72 @@ class GaussianRegressionRecommender(Recommender):
         
         return True
     
-    def recommend(self, num_recommendations=10, exploration_weight=1.0):
+    def predict_rating_with_sampling(self, document, n_nearest=10, num_samples=100, N_sigma=1.):
+        """
+        Predict rating using GP sampling for robust uncertainty estimation.
+        
+        Args:
+            document (str): Document to predict rating for
+            n_nearest (int): Number of nearest embeddings to use
+            num_samples (int): Number of GP samples to draw
+            N_sigma (float): Number of standard deviations to use for confidence interval
+            
+        Returns:
+            tuple: (predicted_rating, lower_bound, upper_bound)
+        """
+        # Get similar documents
+        results = self.vector_store.search([document], num_results=n_nearest)
+        
+        if "distances" not in results or not results["distances"]:
+            return None, None, None
+        
+        # Get similarities and ratings
+        similarities = [1 - dist for dist in results["distances"][0]]
+        ratings = [float(meta.get("rating", 0)) for meta in results["metadatas"][0]]
+        
+        # Reshape for prediction
+        X_pred = np.array(similarities).reshape(-1, 1)
+        
+        # Draw samples from the GP posterior
+        y_samples = self.model.sample_y(X_pred, num_samples)
+        
+        # Calculate the expected variance between ratings as a function of similarity
+        predicted_variances = np.mean(y_samples, axis=1)
+        
+        # Convert variances to weights (higher variance = lower weight)
+        epsilon = 1e-6  # Small value to avoid division by zero
+        weights = 1.0 / (predicted_variances + epsilon)
+        weights = weights / np.sum(weights)  # Normalize weights
+        
+        # Calculate weighted rating
+        weighted_rating = np.sum(weights * np.array(ratings))
+        
+        # Calculate statistics from samples
+        sample_ratings = []
+        for sample_idx in range(num_samples):
+            # Get variance predictions for this sample
+            sample_variances = y_samples[:, sample_idx]
+            
+            # Convert to weights
+            sample_weights = 1.0 / (sample_variances + epsilon)
+            sample_weights = sample_weights / np.sum(sample_weights)
+            
+            # Calculate weighted rating for this sample
+            sample_weighted_rating = np.sum(sample_weights * np.array(ratings))
+            sample_ratings.append(sample_weighted_rating)
+        
+        # Calculate bounds from samples using N_sigma
+        # Convert N_sigma to quantiles using the normal distribution CDF
+        lower_quantile = stats.norm.cdf(-N_sigma)
+        upper_quantile = stats.norm.cdf(N_sigma)
+        
+        # Get bounds using calculated percentiles
+        lower_bound = np.quantile(sample_ratings, lower_quantile)
+        upper_bound = np.quantile(sample_ratings, upper_quantile)
+        
+        return weighted_rating, lower_bound, upper_bound
+    
+    def recommend(self, num_recommendations=10, exploration_weight=1.0, n_nearest_embeddings=None, gp_num_samples=None):
         """
         Recommend new papers from the data source.
         
@@ -168,6 +241,8 @@ class GaussianRegressionRecommender(Recommender):
                 0.0 means pure exploitation (use predicted rating only)
                 Higher values encourage exploration of uncertain predictions
                 Default is 1.0 for balanced exploration-exploitation
+            n_nearest_embeddings (int): Number of nearest embeddings to use for prediction
+            gp_num_samples (int): Number of GP samples to draw for uncertainty estimation
                 
         Returns:
             list: A list of recommended papers with predicted ratings
@@ -217,38 +292,48 @@ class GaussianRegressionRecommender(Recommender):
         
         # Second pass: generate embeddings with progress tracking
         new_papers = []
-        for title, abstract, link, document in papers_to_process:
-            embedding = self.embedding_model.get_embedding(document)
-            
-            new_papers.append({
-                "title": title,
-                "abstract": abstract,
-                "link": link,
-                "document": document,
-                "embedding": embedding
-            })
+        try:
+            for title, abstract, link, document in papers_to_process:
+                embedding = self.embedding_model.get_embedding(document)
+                
+                new_papers.append({
+                    "title": title,
+                    "abstract": abstract,
+                    "link": link,
+                    "document": document,
+                    "embedding": embedding
+                })
+        finally:
+            # Ensure progress tracker is closed even if an exception occurs
+            progress_tracker.close()
+            # Reset the progress tracker in the embedding model
+            self.embedding_model.set_progress_tracker(None)
+        
+        # Use config values if not provided
+        from .config import load_config
+        config = load_config()
+        n_nearest = n_nearest_embeddings or config.get("n_nearest_embeddings", 10)
+        num_samples = gp_num_samples or config.get("gp_num_samples", 100)
         
         # For each new paper, find similar papers in the vector store
         recommendations = []
         
         for paper in new_papers:
-            # Use the paper as a query
-            results = self.vector_store.search([paper["document"]], num_results=self.max_samples)
+            # Predict rating with sampling, passing exploration_weight as N_sigma
+            mean_rating, lower_bound, upper_bound = self.predict_rating_with_sampling(
+                paper["document"], n_nearest=n_nearest, num_samples=num_samples, N_sigma=exploration_weight
+            )
             
-            if "distances" not in results or not results["distances"]:
+            if mean_rating is None:
                 continue
-                
-            # Convert distances to similarities
-            similarities = [1 - dist for dist in results["distances"][0]]
             
-            # Reshape for prediction
-            X_pred = np.array(similarities).reshape(-1, 1)
+            # Calculate uncertainty range
+            uncertainty_range = upper_bound - lower_bound
             
-            # Predict rating
-            predicted_rating, std_dev = self.model.predict(X_pred.mean(axis=0).reshape(1, -1), return_std=True)
-            
-            # Calculate acquisition function value (UCB)
-            acquisition_value = float(predicted_rating[0]) + exploration_weight * float(std_dev[0])
+            # Calculate acquisition function value
+            # Since exploration_weight is now directly controlling the confidence interval width,
+            # we can use the upper bound as the acquisition value
+            acquisition_value = upper_bound
             
             # Add to recommendations
             recommendations.append({
@@ -256,9 +341,11 @@ class GaussianRegressionRecommender(Recommender):
                 "abstract": paper["abstract"],
                 "link": paper["link"],
                 "document": paper["document"],
-                "predicted_rating": float(predicted_rating[0]),
-                "std_dev": float(std_dev[0]),
-                "acquisition_value": acquisition_value
+                "predicted_rating": float(mean_rating),
+                "lower_bound": float(lower_bound),
+                "upper_bound": float(upper_bound),
+                "uncertainty_range": float(uncertainty_range),
+                "acquisition_value": float(acquisition_value)
             })
         
         # Sort by acquisition value (descending) instead of just predicted rating
@@ -376,6 +463,24 @@ def recommend_papers(config=None):
         exploration_weight = config["exploration_weight"]
         print(f"Invalid input. Using default: {exploration_weight} (balanced exploration-exploitation)")
     
+    # Get n_nearest_embeddings
+    try:
+        nearest_prompt = f"Enter number of nearest embeddings to use [default: {config['n_nearest_embeddings']}]: "
+        nearest_input = input(nearest_prompt)
+        n_nearest = int(nearest_input) if nearest_input else config["n_nearest_embeddings"]
+    except ValueError:
+        n_nearest = config["n_nearest_embeddings"]
+        print(f"Invalid input. Using default: {n_nearest} nearest embeddings")
+    
+    # Get gp_num_samples
+    try:
+        samples_prompt = f"Enter number of GP samples [default: {config['gp_num_samples']}]: "
+        samples_input = input(samples_prompt)
+        gp_samples = int(samples_input) if samples_input else config["gp_num_samples"]
+    except ValueError:
+        gp_samples = config["gp_num_samples"]
+        print(f"Invalid input. Using default: {gp_samples} GP samples")
+    
     print("\nInitializing recommendation system...")
     
     # Create components
@@ -395,7 +500,9 @@ def recommend_papers(config=None):
     print("Generating recommendations...")
     recommendations = recommender.recommend(
         num_recommendations=num_recommendations,
-        exploration_weight=exploration_weight
+        exploration_weight=exploration_weight,
+        n_nearest_embeddings=n_nearest,
+        gp_num_samples=gp_samples
     )
     
     if not recommendations:
@@ -411,8 +518,17 @@ def recommend_papers(config=None):
         print(f"Recommendation {i+1}:")
         print(f"Title: {rec['title']}")
         print(f"Link: {rec['link']}")
-        print(f"Predicted Rating: {rec['predicted_rating']:.2f}/5.0")
-        print(f"Uncertainty (std dev): {rec['std_dev']:.4f}")
+        
+        # Check if we have the new prediction format
+        if 'lower_bound' in rec and 'upper_bound' in rec:
+            print(f"Predicted Rating: {rec['predicted_rating']:.2f}/5.0")
+            print(f"Rating Range: [{rec['lower_bound']:.2f}, {rec['upper_bound']:.2f}]")
+            print(f"Uncertainty Range: {rec['uncertainty_range']:.4f}")
+        else:
+            # Fallback to old format
+            print(f"Predicted Rating: {rec['predicted_rating']:.2f}/5.0")
+            print(f"Uncertainty (std dev): {rec['std_dev']:.4f}")
+            
         print(f"Acquisition Value: {rec['acquisition_value']:.4f}")
         
         # Print a preview of the abstract (first 150 chars)

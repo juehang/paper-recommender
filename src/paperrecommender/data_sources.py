@@ -43,7 +43,7 @@ class ArXivDataSource(DataSource):
         end_date_str = current_date.strftime("%Y%m%d%H%M")
         query_params = {
             "search_query": f"submittedDate:[{start_date_str} TO {end_date_str}]",
-            "max_results": 300,
+            "max_results": 500,
             "sortBy": "lastUpdatedDate",
             "sortOrder": "descending"
         }

@@ -8,11 +8,13 @@ DEFAULT_CONFIG = {
     "model_path": os.path.expanduser("~/.paper_recommender/gp_model.pkl"),
     "embedding_cache_path": os.path.expanduser("~/.paper_recommender/embedding_cache.pkl"),
     "exploration_weight": 1.0,
-    "max_samples": 1000,
+    "max_samples": 100,
     "period_hours": 48,
     "random_sample_size": 5,
     "diverse_sample_size": 5,
-    "num_recommendations": 5
+    "num_recommendations": 5,
+    "gp_num_samples": 100,  # Number of GP samples for uncertainty estimation
+    "n_nearest_embeddings": 10  # Number of nearest embeddings to use for prediction
 }
 
 # Configuration file path
@@ -109,7 +111,9 @@ def update_config_from_args(config, args):
         "period_hours": "period_hours",
         "random_sample_size": "random_sample_size",
         "diverse_sample_size": "diverse_sample_size",
-        "num_recommendations": "num_recommendations"
+        "num_recommendations": "num_recommendations",
+        "gp_num_samples": "gp_num_samples",
+        "n_nearest_embeddings": "n_nearest_embeddings"
     }
     
     # Update config with args
