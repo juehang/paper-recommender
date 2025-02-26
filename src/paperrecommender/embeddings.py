@@ -108,7 +108,7 @@ class OllamaEmbedding(EmbeddingModel):
     Class for generating embeddings using the Ollama API.
     """
     def __init__(self, url="http://localhost:11434/api/embeddings", model="nomic-embed-text", 
-                 max_cache_size=1000, cache_path=None):
+                 max_cache_size=2000, cache_path=None):
         super().__init__(max_cache_size=max_cache_size, cache_path=cache_path)
         self.url = url
         self.model = model

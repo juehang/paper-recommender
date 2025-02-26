@@ -33,11 +33,12 @@ class GaussianRegressionRecommender(Recommender):
     Recommender that uses 1D Gaussian Process Regression on similarity scores
     to predict paper ratings for new papers from a data source.
     """
-    def __init__(self, data_source, vector_store, embedding_model, max_samples=50, model_path=None):
+    def __init__(self, data_source, vector_store, embedding_model, max_samples=50, model_path=None, bootstrap_sample_size=20):
         super().__init__(data_source, vector_store, embedding_model)
         self.max_samples = max_samples
         self.model = None
         self.model_path = model_path or os.path.expanduser("~/.paper_recommender/gp_model.pkl")
+        self.bootstrap_sample_size = bootstrap_sample_size
         
         # Try to load an existing model
         self.load_model()
@@ -99,7 +100,7 @@ class GaussianRegressionRecommender(Recommender):
         y = []  # Rating variances (squared differences)
         
         # Sample a subset of documents to use as queries
-        sample_size = min(20, len(all_docs["ids"]))
+        sample_size = min(self.bootstrap_sample_size, len(all_docs["ids"]))
         sample_indices = np.random.choice(len(all_docs["ids"]), sample_size, replace=False)
         
         for idx in sample_indices:
@@ -155,7 +156,7 @@ class GaussianRegressionRecommender(Recommender):
         # Fit the Gaussian Process Regression model
         # Define the kernel with hyperparameters
         # Using RBF kernel for smoothness + WhiteKernel for observation noise
-        kernel = RBF(length_scale=1.0, length_scale_bounds=(1e-2, 1e2)) + WhiteKernel(noise_level=1.0, noise_level_bounds=(1e-5, 20.))
+        kernel = RBF(length_scale=1.0, length_scale_bounds=(1e-3, 1e1)) + WhiteKernel(noise_level=1.0, noise_level_bounds=(1e-5, 20.))
         
         # Create and fit the model
         self.model = GaussianProcessRegressor(kernel=kernel, n_restarts_optimizer=9)
@@ -355,7 +356,7 @@ class GaussianRegressionRecommender(Recommender):
         return recommendations[:num_recommendations]
 
 
-def create_recommender(data_source, vector_store, embedding_model, max_samples=50, model_path=None):
+def create_recommender(data_source, vector_store, embedding_model, max_samples=50, model_path=None, bootstrap_sample_size=20):
     """
     Create and initialize a recommender.
     
@@ -365,12 +366,13 @@ def create_recommender(data_source, vector_store, embedding_model, max_samples=5
         embedding_model: The embedding model to use for new papers
         max_samples: Maximum number of samples to use for fitting the model
         model_path: Path to the model pickle file
+        bootstrap_sample_size: Number of datapoints to use for GP bootstrap
         
     Returns:
         GaussianRegressionRecommender: An initialized recommender
     """
     recommender = GaussianRegressionRecommender(
-        data_source, vector_store, embedding_model, max_samples, model_path
+        data_source, vector_store, embedding_model, max_samples, model_path, bootstrap_sample_size
     )
     return recommender
 
@@ -406,7 +408,8 @@ def bootstrap_recommender(config=None):
         vector_store, 
         embedding_model,
         max_samples=config["max_samples"],
-        model_path=config["model_path"]
+        model_path=config["model_path"],
+        bootstrap_sample_size=config["gp_bootstrap_num_datapoints"]
     )
     
     print("Bootstrapping model...")
@@ -494,7 +497,8 @@ def recommend_papers(config=None):
         vector_store, 
         embedding_model,
         max_samples=config["max_samples"],
-        model_path=config["model_path"]
+        model_path=config["model_path"],
+        bootstrap_sample_size=config["gp_bootstrap_num_datapoints"]
     )
     
     print("Generating recommendations...")
