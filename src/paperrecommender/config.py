@@ -7,7 +7,7 @@ DEFAULT_CONFIG = {
     "chroma_db_path": os.path.expanduser("~/.paper_recommender/chroma_db"),
     "model_path": os.path.expanduser("~/.paper_recommender/gp_model.pkl"),
     "embedding_cache_path": os.path.expanduser("~/.paper_recommender/embedding_cache.pkl"),
-    "exploration_weight": 1.0,
+    "exploration_weight": 0.5,
     "max_samples": 100,
     "period_hours": 48,
     "random_sample_size": 5,
