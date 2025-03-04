@@ -7,6 +7,9 @@ DEFAULT_CONFIG = {
     "chroma_db_path": os.path.expanduser("~/.paper_recommender/chroma_db"),
     "model_path": os.path.expanduser("~/.paper_recommender/gp_model.pkl"),
     "embedding_cache_path": os.path.expanduser("~/.paper_recommender/embedding_cache.pkl"),
+    "embedding_provider": "ollama",  # Embedding provider to use ("ollama" or "openai")
+    "openai_api_key": "",  # OpenAI API key (only used when embedding_provider is "openai")
+    "openai_embedding_model": "text-embedding-ada-002",  # OpenAI embedding model to use
     "exploration_weight": 0.5,
     "max_samples": 20,
     "period_hours": 48,
@@ -107,6 +110,9 @@ def update_config_from_args(config, args):
         "chroma_db_path": "chroma_db_path",
         "model_path": "model_path",
         "embedding_cache_path": "embedding_cache_path",
+        "embedding_provider": "embedding_provider",
+        "openai_api_key": "openai_api_key",
+        "openai_embedding_model": "openai_embedding_model",
         "exploration_weight": "exploration_weight",
         "max_samples": "max_samples",
         "period_hours": "period_hours",

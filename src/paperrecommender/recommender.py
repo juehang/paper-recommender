@@ -385,7 +385,7 @@ def bootstrap_recommender(config=None):
         config (dict, optional): Configuration dictionary
     """
     from .data_sources import ArXivDataSource
-    from .embeddings import OllamaEmbedding
+    from .embeddings import create_embedding_model
     from .vector_store import ChromaVectorStore
     from .config import load_config
     
@@ -399,7 +399,7 @@ def bootstrap_recommender(config=None):
     
     # Create components
     data_source = ArXivDataSource(period=config["period_hours"])
-    embedding_model = OllamaEmbedding(cache_path=config["embedding_cache_path"])
+    embedding_model = create_embedding_model(config)
     vector_store = ChromaVectorStore(embedding_model, path=config["chroma_db_path"])
     
     # Create recommender
@@ -429,7 +429,7 @@ def recommend_papers(config=None):
         config (dict, optional): Configuration dictionary
     """
     from .data_sources import ArXivDataSource
-    from .embeddings import OllamaEmbedding
+    from .embeddings import create_embedding_model
     from .vector_store import ChromaVectorStore
     from .config import load_config
     
@@ -488,7 +488,7 @@ def recommend_papers(config=None):
     
     # Create components
     data_source = ArXivDataSource(period=period)
-    embedding_model = OllamaEmbedding(cache_path=config["embedding_cache_path"])
+    embedding_model = create_embedding_model(config)
     vector_store = ChromaVectorStore(embedding_model, path=config["chroma_db_path"])
     
     # Create recommender

@@ -19,7 +19,9 @@ The system uses a sophisticated approach where the GPR model learns the expected
 ### Prerequisites
 
 - Python 3.8 or higher
-- [Ollama](https://ollama.ai/) for text embeddings
+- One of the following for text embeddings:
+  - [Ollama](https://ollama.ai/) (default)
+  - OpenAI API key (optional)
 
 ### Installing Paper Recommender
 
@@ -64,6 +66,9 @@ Paper Recommender uses a configuration file located at `~/.paper_recommender/con
   "chroma_db_path": "~/.paper_recommender/chroma_db",
   "model_path": "~/.paper_recommender/gp_model.pkl",
   "embedding_cache_path": "~/.paper_recommender/embedding_cache.pkl",
+  "embedding_provider": "ollama",
+  "openai_api_key": "",
+  "openai_embedding_model": "text-embedding-ada-002",
   "exploration_weight": 1.0,
   "max_samples": 1000,
   "period_hours": 48,
@@ -76,6 +81,9 @@ Paper Recommender uses a configuration file located at `~/.paper_recommender/con
 ```
 
 Key configuration parameters:
+- `embedding_provider`: Which embedding provider to use ("ollama" or "openai")
+- `openai_api_key`: Your OpenAI API key (only used when embedding_provider is "openai")
+- `openai_embedding_model`: The OpenAI embedding model to use (default: "text-embedding-ada-002")
 - `exploration_weight`: Controls the balance between exploration and exploitation (higher values favor exploration)
 - `period_hours`: Time window for fetching recent papers from arXiv
 - `random_sample_size` and `diverse_sample_size`: Number of papers to show during onboarding
@@ -134,6 +142,9 @@ usage: paper-recommender [-h] [--onboard] [--recommend] [--bootstrap]
                          [--config CONFIG] [--chroma-db-path CHROMA_DB_PATH]
                          [--model-path MODEL_PATH]
                          [--embedding-cache-path EMBEDDING_CACHE_PATH]
+                         [--embedding-provider {ollama,openai}]
+                         [--openai-api-key OPENAI_API_KEY]
+                         [--openai-embedding-model OPENAI_EMBEDDING_MODEL]
                          [--exploration-weight EXPLORATION_WEIGHT]
                          [--max-samples MAX_SAMPLES]
                          [--period-hours PERIOD_HOURS]
@@ -155,6 +166,12 @@ optional arguments:
                         Path to model pickle file
   --embedding-cache-path EMBEDDING_CACHE_PATH
                         Path to embedding cache file
+  --embedding-provider {ollama,openai}
+                        Embedding provider to use
+  --openai-api-key OPENAI_API_KEY
+                        OpenAI API key (only used with openai provider)
+  --openai-embedding-model OPENAI_EMBEDDING_MODEL
+                        OpenAI embedding model (only used with openai provider)
   --exploration-weight EXPLORATION_WEIGHT
                         Exploration weight for recommendations
   --max-samples MAX_SAMPLES
@@ -177,7 +194,13 @@ Paper Recommender fetches recent papers from arXiv based on the configured time 
 
 ### Embeddings
 
-The system uses the nomic-embed-text model through Ollama to generate vector embeddings for paper content. These embeddings capture the semantic meaning of papers, allowing the system to find similar papers.
+The system supports two embedding providers:
+
+1. **Ollama with nomic-embed-text (Default)**: Uses the nomic-embed-text model through Ollama to generate vector embeddings locally.
+
+2. **OpenAI Embeddings**: Alternatively, you can use OpenAI's embedding models by setting `embedding_provider` to "openai" and providing your API key.
+
+These embeddings capture the semantic meaning of papers, allowing the system to find similar papers.
 
 ### Vector Store
 
@@ -200,6 +223,7 @@ This approach provides more robust recommendations with better uncertainty estim
 
 - **Ollama Connection Error**: Ensure the Ollama server is running with `ollama serve`
 - **Missing Model**: If you get an error about the nomic-embed-text model, run `ollama pull nomic-embed-text`
+- **OpenAI API Key Issues**: If using the OpenAI embedding provider, ensure your API key is valid and has sufficient quota
 - **No Recommendations**: You may need to onboard more papers before getting recommendations
 
 ### Reporting Issues

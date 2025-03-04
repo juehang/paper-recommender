@@ -5,7 +5,7 @@ from .config import load_config, update_config_from_args, is_first_startup
 from .onboarding import terminal_ui_onboarding, create_onboarding_system
 from .recommender import recommend_papers, bootstrap_recommender, create_recommender
 from .data_sources import ArXivDataSource
-from .embeddings import OllamaEmbedding
+from .embeddings import create_embedding_model
 from .vector_store import ChromaVectorStore
 
 def main():
@@ -28,6 +28,9 @@ def main():
     parser.add_argument("--chroma-db-path", help="Path to ChromaDB directory")
     parser.add_argument("--model-path", help="Path to model pickle file")
     parser.add_argument("--embedding-cache-path", help="Path to embedding cache file")
+    parser.add_argument("--embedding-provider", choices=["ollama", "openai"], help="Embedding provider to use")
+    parser.add_argument("--openai-api-key", help="OpenAI API key (only used with openai provider)")
+    parser.add_argument("--openai-embedding-model", help="OpenAI embedding model (only used with openai provider)")
     parser.add_argument("--exploration-weight", type=float, help="Exploration weight for recommendations")
     parser.add_argument("--max-samples", type=int, help="Maximum number of samples for similarity search")
     parser.add_argument("--period-hours", type=int, help="Time period in hours for paper retrieval")
@@ -45,7 +48,7 @@ def main():
     
     # Create components with configuration
     data_source = ArXivDataSource(period=config["period_hours"])
-    embedding_model = OllamaEmbedding(cache_path=config["embedding_cache_path"])
+    embedding_model = create_embedding_model(config)
     vector_store = ChromaVectorStore(embedding_model, path=config["chroma_db_path"])
     
     # Determine what to run

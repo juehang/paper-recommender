@@ -2,6 +2,7 @@ import requests
 import numpy as np
 import os
 import pickle
+from openai import OpenAI
 
 class EmbeddingModel:
     """
@@ -118,3 +119,52 @@ class OllamaEmbedding(EmbeddingModel):
         json_data = {"model": model, "prompt": text}
         response = requests.post(url, json=json_data, headers={"Content-Type": "application/json"})
         return np.array(response.json()['embedding'])
+
+class OpenAIEmbedding(EmbeddingModel):
+    """
+    Class for generating embeddings using the OpenAI API.
+    """
+    def __init__(self, api_key, model="text-embedding-ada-002", 
+                 max_cache_size=2000, cache_path=None):
+        super().__init__(max_cache_size=max_cache_size, cache_path=cache_path)
+        self.client = OpenAI(api_key=api_key)
+        self.model = model
+        # Set url to None as it's not used in this implementation
+        self.url = None
+    
+    @staticmethod
+    def generate_embedding(text, url, model):
+        # In this implementation, url is actually the OpenAI client
+        client = url
+        response = client.embeddings.create(
+            model=model,
+            input=text
+        )
+        return np.array(response.data[0].embedding)
+
+
+def create_embedding_model(config):
+    """
+    Create an embedding model based on configuration.
+    
+    Args:
+        config (dict): Configuration dictionary
+        
+    Returns:
+        EmbeddingModel: An instance of the configured embedding model
+    """
+    provider = config.get("embedding_provider", "ollama").lower()
+    
+    if provider == "openai":
+        api_key = config.get("openai_api_key", "")
+        if not api_key:
+            print("Warning: OpenAI embedding provider selected but no API key provided. Falling back to Ollama.")
+            return OllamaEmbedding(cache_path=config.get("embedding_cache_path"))
+            
+        return OpenAIEmbedding(
+            api_key=api_key,
+            model=config.get("openai_embedding_model", "text-embedding-ada-002"),
+            cache_path=config.get("embedding_cache_path")
+        )
+    else:  # Default to Ollama
+        return OllamaEmbedding(cache_path=config.get("embedding_cache_path"))

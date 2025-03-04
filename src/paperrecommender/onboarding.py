@@ -2,7 +2,7 @@
 
 from .common import construct_string, cosine_similarity
 from .data_sources import ArXivDataSource
-from .embeddings import OllamaEmbedding
+from .embeddings import create_embedding_model
 from .vector_store import ChromaVectorStore
 import random
 import numpy as np
@@ -466,7 +466,7 @@ class Onboarder:
 
 
 # Factory function with the same interface
-def create_onboarding_system(period=48, random_sample_size=5, diverse_sample_size=5, chroma_db_path=None, embedding_cache_path=None):
+def create_onboarding_system(period=48, random_sample_size=5, diverse_sample_size=5, chroma_db_path=None, embedding_cache_path=None, config=None):
     """
     Create and return a complete onboarding system.
     
@@ -476,14 +476,29 @@ def create_onboarding_system(period=48, random_sample_size=5, diverse_sample_siz
         diverse_sample_size (int): Number of papers for diverse selection
         chroma_db_path (str, optional): Path to ChromaDB directory
         embedding_cache_path (str, optional): Path to embedding cache file
+        config (dict, optional): Configuration dictionary
         
     Returns:
         tuple: (data_source, embedding_model, vector_store, onboarder)
     """
+    from .config import load_config
+    
+    # Load configuration if not provided
+    if config is None:
+        config = load_config()
+    
+    # Override config with provided parameters
+    if period is not None:
+        config["period_hours"] = period
+    if chroma_db_path is not None:
+        config["chroma_db_path"] = chroma_db_path
+    if embedding_cache_path is not None:
+        config["embedding_cache_path"] = embedding_cache_path
+    
     # Create the components
-    data_source = ArXivDataSource(period=period)
-    embedding_model = OllamaEmbedding(cache_path=embedding_cache_path)
-    vector_store = ChromaVectorStore(embedding_model, path=chroma_db_path)
+    data_source = ArXivDataSource(period=config["period_hours"])
+    embedding_model = create_embedding_model(config)
+    vector_store = ChromaVectorStore(embedding_model, path=config["chroma_db_path"])
     
     # Create strategies
     random_strategy = RandomSelectionStrategy(data_source, embedding_model, random_sample_size)
@@ -513,7 +528,7 @@ def terminal_ui_onboarding(config=None):
     # Initialize components with default configuration
     print("Initializing onboarding system...")
     data_source = ArXivDataSource(period=config["period_hours"])
-    embedding_model = OllamaEmbedding(cache_path=config["embedding_cache_path"])
+    embedding_model = create_embedding_model(config)
     vector_store = ChromaVectorStore(embedding_model, path=config["chroma_db_path"])
     
     # Create strategies with default sample sizes
