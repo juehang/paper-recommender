@@ -324,8 +324,10 @@ def start_app(web_dir=None, mode="chrome-app", host="localhost", port=8000, bloc
     # Initialize Eel
     init_eel(web_dir)
     
-    # Initialize components
-    init_components()
+    # Load configuration only (defer heavy component initialization)
+    global config
+    if config is None:
+        config = load_config()
     
     # Start Eel
     eel.start('index.html', mode=mode, host=host, port=port, block=block)
