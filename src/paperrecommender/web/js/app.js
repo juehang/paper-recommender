@@ -617,15 +617,50 @@ async function saveConfig() {
 function showLoading(isLoading, description = '') {
   state.isLoading = isLoading;
   
-  const loadingOverlay = document.getElementById('loading-overlay');
-  const loadingText = document.getElementById('loading-text');
-  
-  if (loadingOverlay && loadingText) {
-    if (isLoading) {
+  if (isLoading) {
+    // Create loading overlay if it doesn't exist
+    let loadingOverlay = document.getElementById('loading-overlay');
+    
+    if (!loadingOverlay) {
+      loadingOverlay = document.createElement('div');
+      loadingOverlay.id = 'loading-overlay';
+      loadingOverlay.style.position = 'fixed';
+      loadingOverlay.style.top = '0';
+      loadingOverlay.style.left = '0';
+      loadingOverlay.style.width = '100%';
+      loadingOverlay.style.height = '100%';
+      loadingOverlay.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+      loadingOverlay.style.display = 'flex';
+      loadingOverlay.style.flexDirection = 'column';
+      loadingOverlay.style.justifyContent = 'center';
+      loadingOverlay.style.alignItems = 'center';
+      loadingOverlay.style.zIndex = '1000';
+      
+      const spinner = document.createElement('div');
+      spinner.className = 'spinner';
+      
+      const loadingText = document.createElement('div');
+      loadingText.id = 'loading-text';
+      loadingText.style.color = 'white';
+      loadingText.style.marginTop = '1rem';
+      loadingText.style.fontWeight = 'bold';
+      
+      loadingOverlay.appendChild(spinner);
+      loadingOverlay.appendChild(loadingText);
+      document.body.appendChild(loadingOverlay);
+    }
+    
+    // Set loading text
+    const loadingText = document.getElementById('loading-text');
+    if (loadingText) {
       loadingText.textContent = description;
-      loadingOverlay.classList.remove('hidden');
-    } else {
-      loadingOverlay.classList.add('hidden');
+    }
+  } else {
+    // Remove loading overlay
+    const loadingOverlay = document.getElementById('loading-overlay');
+    if (loadingOverlay) {
+      loadingOverlay.remove();
+      console.log("Loading overlay removed from DOM");
     }
   }
 }
