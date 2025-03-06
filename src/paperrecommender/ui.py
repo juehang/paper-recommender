@@ -113,7 +113,8 @@ def is_first_startup() -> bool:
     Returns:
         bool: True if this is the first startup, False otherwise
     """
-    return is_first_startup()
+    from .config import is_first_startup as config_is_first_startup
+    return config_is_first_startup()
 
 @eel.expose
 def get_config() -> Dict[str, Any]:
@@ -309,13 +310,13 @@ def bootstrap_recommender() -> bool:
     return recommender.bootstrap(force=True)
 
 # Start the Eel app
-def start_app(web_dir=None, mode="chrome", host="localhost", port=8000, block=True):
+def start_app(web_dir=None, mode="chrome-app", host="localhost", port=8000, block=True):
     """
     Start the Eel app.
     
     Args:
         web_dir (str, optional): Path to the web directory. If None, use the default.
-        mode (str, optional): Mode to start Eel in. Default is "chrome".
+        mode (str, optional): Mode to start Eel in. Default is "chrome-app".
         host (str, optional): Host to bind to. Default is "localhost".
         port (int, optional): Port to bind to. Default is 8000.
         block (bool, optional): Whether to block the main thread. Default is True.
