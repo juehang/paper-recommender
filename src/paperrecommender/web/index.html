@@ -23,6 +23,7 @@
         <li><a href="#" data-view="home" class="active">Home</a></li>
         <li><a href="#" data-view="onboarding">Onboarding</a></li>
         <li><a href="#" data-view="recommendations">Recommendations</a></li>
+        <li><a href="#" data-view="database">Database</a></li>
         <li><a href="#" data-view="settings">Settings</a></li>
       </ul>
     </div>
@@ -137,6 +138,52 @@
         <form id="recommendation-form">
           <div id="recommendation-papers"></div>
         </form>
+      </div>
+      
+      <!-- Database View -->
+      <div id="database-view" class="view hidden">
+        <div class="card mb-4">
+          <div class="card-header">
+            <h2>ChromaDB Browser</h2>
+          </div>
+          <div class="card-body">
+            <p>Browse papers stored in the vector database.</p>
+            
+            <div class="form-row">
+              <div class="form-group col-md-4">
+                <label for="db-time-filter">Time Range:</label>
+                <select id="db-time-filter">
+                  <option value="30" selected>Last 30 days</option>
+                  <option value="90">Last 90 days</option>
+                  <option value="180">Last 6 months</option>
+                  <option value="365">Last year</option>
+                  <option value="0">All time</option>
+                </select>
+              </div>
+              
+              <div class="form-group col-md-4">
+                <label for="db-search">Search:</label>
+                <input type="text" id="db-search" placeholder="Filter by title or content...">
+              </div>
+              
+              <div class="form-group col-md-4">
+                <label for="db-sort">Sort by:</label>
+                <select id="db-sort">
+                  <option value="timestamp-desc">Date Added (Newest First)</option>
+                  <option value="timestamp-asc">Date Added (Oldest First)</option>
+                  <option value="rating-desc">Rating (High to Low)</option>
+                  <option value="rating-asc">Rating (Low to High)</option>
+                </select>
+              </div>
+            </div>
+            
+            <button id="refresh-database" class="btn mt-2">Refresh Data</button>
+          </div>
+        </div>
+        
+        <div id="database-papers" class="papers-container">
+          <!-- Papers will be loaded here -->
+        </div>
       </div>
       
       <!-- Settings View -->

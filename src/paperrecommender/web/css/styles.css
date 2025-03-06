@@ -431,3 +431,95 @@ footer {
   padding: 1rem;
   margin-top: 2rem;
 }
+
+/* Form row layout */
+.form-row {
+  display: flex;
+  flex-wrap: wrap;
+  margin-right: -15px;
+  margin-left: -15px;
+}
+
+.form-row > .form-group {
+  padding-right: 15px;
+  padding-left: 15px;
+}
+
+.col-md-4 {
+  flex: 0 0 33.333333%;
+  max-width: 33.333333%;
+}
+
+@media (max-width: 768px) {
+  .col-md-4 {
+    flex: 0 0 100%;
+    max-width: 100%;
+  }
+}
+
+/* Database table styles */
+.database-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1rem;
+}
+
+.database-table th,
+.database-table td {
+  padding: 0.75rem;
+  border: 1px solid #ddd;
+  text-align: left;
+}
+
+.database-table th {
+  background-color: #f5f5f5;
+  font-weight: bold;
+}
+
+.database-table tr:nth-child(even) {
+  background-color: #f9f9f9;
+}
+
+.database-table tr:hover {
+  background-color: #f1f1f1;
+}
+
+.title-cell {
+  font-weight: bold;
+  max-width: 250px;
+}
+
+.abstract-cell {
+  max-width: 400px;
+}
+
+.rating-cell,
+.date-cell {
+  text-align: center;
+}
+
+.actions-cell {
+  text-align: center;
+}
+
+.btn-small {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.875rem;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 0.25rem;
+  cursor: pointer;
+  display: inline-block;
+  margin: 0.25rem;
+  text-decoration: none;
+}
+
+.btn-small:hover {
+  background-color: #0069d9;
+}
+
+.count-info {
+  font-style: italic;
+  color: #666;
+}

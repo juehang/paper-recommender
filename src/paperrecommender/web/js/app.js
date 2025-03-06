@@ -92,10 +92,183 @@ async function initializeView(view) {
     case 'recommendations':
       await initializeRecommendationsView();
       break;
+    case 'database':
+      await initializeDatabaseView();
+      break;
     case 'settings':
       await initializeSettingsView();
       break;
   }
+}
+
+// Initialize database view
+async function initializeDatabaseView() {
+  showLoading(true, 'Loading database entries...');
+  try {
+    // Get time filter value
+    const timeFilterSelect = document.getElementById('db-time-filter');
+    const timeFilter = timeFilterSelect ? parseInt(timeFilterSelect.value) : 30;
+    
+    // Get documents from ChromaDB with time filter
+    const documents = await eel.get_chroma_documents(timeFilter)();
+    
+    // Store in state
+    state.databaseDocuments = documents;
+    
+    // Render documents
+    renderDatabaseDocuments();
+  } catch (error) {
+    showAlert(`Error loading database: ${error}`, 'danger');
+  } finally {
+    showLoading(false);
+  }
+}
+
+// Render database documents
+function renderDatabaseDocuments() {
+  const container = document.getElementById('database-papers');
+  if (!container) return;
+  
+  // Clear container
+  container.innerHTML = '';
+  
+  if (!state.databaseDocuments || state.databaseDocuments.length === 0) {
+    container.innerHTML = '<div class="alert alert-info">No documents found in the database.</div>';
+    return;
+  }
+  
+  // Get filter value
+  const filterValue = (document.getElementById('db-search')?.value || '').toLowerCase();
+  
+  // Get sort option
+  const sortOption = document.getElementById('db-sort')?.value || 'timestamp-desc';
+  
+  // Filter and sort documents
+  let documents = [...state.databaseDocuments];
+  
+  // Apply filter
+  if (filterValue) {
+    documents = documents.filter(doc => 
+      doc.document.toLowerCase().includes(filterValue)
+    );
+  }
+  
+  // Apply sort
+  documents.sort((a, b) => {
+    switch (sortOption) {
+      case 'timestamp-desc':
+        return (b.timestamp || 0) - (a.timestamp || 0);
+      case 'timestamp-asc':
+        return (a.timestamp || 0) - (b.timestamp || 0);
+      case 'rating-desc':
+        return (b.rating || 0) - (a.rating || 0);
+      case 'rating-asc':
+        return (a.rating || 0) - (b.rating || 0);
+      default:
+        return 0;
+    }
+  });
+  
+  // Create table
+  const table = document.createElement('table');
+  table.className = 'database-table';
+  
+  // Create header
+  const thead = document.createElement('thead');
+  const headerRow = document.createElement('tr');
+  
+  ['Title', 'Abstract', 'Rating', 'Date Added', 'Actions'].forEach(header => {
+    const th = document.createElement('th');
+    th.textContent = header;
+    headerRow.appendChild(th);
+  });
+  
+  thead.appendChild(headerRow);
+  table.appendChild(thead);
+  
+  // Create body
+  const tbody = document.createElement('tbody');
+  
+  documents.forEach(doc => {
+    const row = document.createElement('tr');
+    
+    // Extract title and abstract
+    const parts = doc.document.split('\n');
+    const title = parts[0].replace('Title: ', '');
+    const abstract = parts.length > 1 ? parts.slice(1).join('\n').replace('Abstract: ', '') : '';
+    
+    // Title cell
+    const titleCell = document.createElement('td');
+    titleCell.className = 'title-cell';
+    titleCell.textContent = title;
+    row.appendChild(titleCell);
+    
+    // Abstract cell (truncated)
+    const abstractCell = document.createElement('td');
+    abstractCell.className = 'abstract-cell';
+    const abstractPreview = abstract.length > 100 ? abstract.substring(0, 100) + '...' : abstract;
+    abstractCell.textContent = abstractPreview;
+    
+    // Add expand button if abstract is long
+    if (abstract.length > 100) {
+      const expandBtn = document.createElement('button');
+      expandBtn.className = 'btn-small';
+      expandBtn.textContent = 'Show More';
+      expandBtn.addEventListener('click', () => {
+        if (abstractCell.textContent === abstractPreview) {
+          abstractCell.textContent = abstract;
+          expandBtn.textContent = 'Show Less';
+        } else {
+          abstractCell.textContent = abstractPreview;
+          expandBtn.textContent = 'Show More';
+        }
+      });
+      
+      abstractCell.appendChild(document.createElement('br'));
+      abstractCell.appendChild(expandBtn);
+    }
+    
+    row.appendChild(abstractCell);
+    
+    // Rating cell
+    const ratingCell = document.createElement('td');
+    ratingCell.className = 'rating-cell';
+    ratingCell.textContent = doc.rating || 'N/A';
+    row.appendChild(ratingCell);
+    
+    // Date cell
+    const dateCell = document.createElement('td');
+    dateCell.className = 'date-cell';
+    dateCell.textContent = doc.timestamp_display || 'N/A';
+    row.appendChild(dateCell);
+    
+    // Actions cell
+    const actionsCell = document.createElement('td');
+    actionsCell.className = 'actions-cell';
+    
+    // Link button
+    if (doc.link) {
+      const linkBtn = document.createElement('a');
+      linkBtn.href = doc.link;
+      linkBtn.target = '_blank';
+      linkBtn.className = 'btn-small';
+      linkBtn.textContent = 'View Paper';
+      actionsCell.appendChild(linkBtn);
+    }
+    
+    row.appendChild(actionsCell);
+    
+    tbody.appendChild(row);
+  });
+  
+  table.appendChild(tbody);
+  container.appendChild(table);
+  
+  // Add count info
+  const countInfo = document.createElement('div');
+  countInfo.className = 'count-info mt-3';
+  countInfo.textContent = `Showing ${documents.length} of ${state.databaseDocuments.length} documents`;
+  container.appendChild(countInfo);
 }
 
 // Load configuration
@@ -164,6 +337,38 @@ function setupEventListeners() {
     recommendationForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       await submitRecommendationRatings();
+    });
+  }
+  
+  // Database time filter select
+  const dbTimeFilter = document.getElementById('db-time-filter');
+  if (dbTimeFilter) {
+    dbTimeFilter.addEventListener('change', () => {
+      initializeDatabaseView(); // Reload with new time filter
+    });
+  }
+  
+  // Database search input
+  const dbSearch = document.getElementById('db-search');
+  if (dbSearch) {
+    dbSearch.addEventListener('input', () => {
+      renderDatabaseDocuments(); // Re-render with search filter
+    });
+  }
+  
+  // Database sort select
+  const dbSort = document.getElementById('db-sort');
+  if (dbSort) {
+    dbSort.addEventListener('change', () => {
+      renderDatabaseDocuments(); // Re-render with new sort order
+    });
+  }
+  
+  // Refresh database button
+  const refreshDatabase = document.getElementById('refresh-database');
+  if (refreshDatabase) {
+    refreshDatabase.addEventListener('click', () => {
+      initializeDatabaseView(); // Reload database data
     });
   }
   

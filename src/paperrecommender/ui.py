@@ -323,6 +323,67 @@ def bootstrap_recommender() -> bool:
     
     return recommender.bootstrap(force=True)
 
+@eel.expose
+def get_chroma_documents(time_filter=30) -> List[Dict[str, Any]]:
+    """
+    Get documents from the ChromaDB vector store with optional time filtering.
+    
+    Args:
+        time_filter (int): Number of days to filter by (0 for all documents)
+        
+    Returns:
+        list: A list of documents with their metadata
+    """
+    global vector_store
+    if vector_store is None:
+        init_components()
+    
+    # Get all documents
+    all_docs = vector_store.get_all_documents()
+    
+    # Calculate cutoff timestamp for filtering (if applicable)
+    cutoff_timestamp = 0
+    if time_filter > 0:
+        import time
+        from datetime import datetime, timedelta
+        # Calculate timestamp for X days ago
+        cutoff_date = datetime.now() - timedelta(days=time_filter)
+        cutoff_timestamp = cutoff_date.timestamp()
+    
+    # Convert to a more user-friendly format
+    result = []
+    for i, (doc_id, document, metadata) in enumerate(zip(
+        all_docs["ids"], 
+        all_docs["documents"], 
+        all_docs["metadatas"]
+    )):
+        # Skip documents older than the cutoff if filtering is enabled
+        doc_timestamp = metadata.get("timestamp", 0)
+        if time_filter > 0 and doc_timestamp < cutoff_timestamp:
+            continue
+            
+        # Format timestamp as human-readable if it exists
+        timestamp_display = "N/A"
+        if "timestamp" in metadata:
+            try:
+                # Convert Unix timestamp to readable format
+                from datetime import datetime
+                timestamp = metadata["timestamp"]
+                timestamp_display = datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S')
+            except:
+                timestamp_display = str(metadata["timestamp"])
+        
+        result.append({
+            "id": doc_id,
+            "document": document,
+            "link": metadata.get("link", ""),
+            "rating": metadata.get("rating", 0),
+            "timestamp": metadata.get("timestamp", None),
+            "timestamp_display": timestamp_display
+        })
+    
+    return result
+
 # Start the Eel app
 def start_app(web_dir=None, mode="chrome-app", host="localhost", port=8000, block=True):
     """
