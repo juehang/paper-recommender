@@ -93,7 +93,7 @@ main {
 
 .card:hover {
   box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-  transform: translateY(-3px);
+  /* transform: translateY(-3px); */
 }
 
 .card-header {
@@ -177,51 +177,31 @@ main {
   background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" fill="%23f39c12"/></svg>');
 }
 
-.rating input:checked + label ~ label[data-value="1"],
-.rating input:checked + label ~ label[data-value="2"],
-.rating input:checked + label ~ label[data-value="3"],
-.rating input:checked + label ~ label[data-value="4"],
-.rating input:checked + label ~ label[data-value="5"] {
-  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" fill="%23ddd"/></svg>');
-}
-
-/* Hover effect for left-to-right */
-.rating label:hover,
-.rating label:hover ~ label {
-  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" fill="%23ddd"/></svg>');
-}
-
-.rating label:hover ~ label[data-value="1"],
-.rating label:hover ~ label[data-value="2"],
-.rating label:hover ~ label[data-value="3"],
-.rating label:hover ~ label[data-value="4"],
-.rating label:hover ~ label[data-value="5"] {
-  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" fill="%23ddd"/></svg>');
-}
-
-/* Fill stars from left to right on hover */
-.rating label[data-value="1"]:hover,
-.rating label[data-value="2"]:hover,
-.rating label[data-value="3"]:hover,
-.rating label[data-value="4"]:hover,
-.rating label[data-value="5"]:hover,
-.rating label[data-value="1"]:hover ~ label[data-value="1"],
-.rating label[data-value="2"]:hover ~ label[data-value="1"],
-.rating label[data-value="2"]:hover ~ label[data-value="2"],
-.rating label[data-value="3"]:hover ~ label[data-value="1"],
-.rating label[data-value="3"]:hover ~ label[data-value="2"],
-.rating label[data-value="3"]:hover ~ label[data-value="3"],
-.rating label[data-value="4"]:hover ~ label[data-value="1"],
-.rating label[data-value="4"]:hover ~ label[data-value="2"],
-.rating label[data-value="4"]:hover ~ label[data-value="3"],
-.rating label[data-value="4"]:hover ~ label[data-value="4"],
-.rating label[data-value="5"]:hover ~ label[data-value="1"],
-.rating label[data-value="5"]:hover ~ label[data-value="2"],
-.rating label[data-value="5"]:hover ~ label[data-value="3"],
-.rating label[data-value="5"]:hover ~ label[data-value="4"],
-.rating label[data-value="5"]:hover ~ label[data-value="5"] {
+/* This selector highlights the selected star and all stars to its left */
+.rating label:nth-of-type(1):hover ~ input:nth-of-type(1):checked ~ label:nth-of-type(1),
+.rating label:nth-of-type(3):hover ~ input:nth-of-type(2):checked ~ label:nth-of-type(3),
+.rating label:nth-of-type(5):hover ~ input:nth-of-type(3):checked ~ label:nth-of-type(5),
+.rating label:nth-of-type(7):hover ~ input:nth-of-type(4):checked ~ label:nth-of-type(7),
+.rating label:nth-of-type(9):hover ~ input:nth-of-type(5):checked ~ label:nth-of-type(9),
+.rating input:nth-of-type(1):checked ~ label:nth-of-type(1),
+.rating input:nth-of-type(2):checked ~ label:nth-of-type(1),
+.rating input:nth-of-type(2):checked ~ label:nth-of-type(3),
+.rating input:nth-of-type(3):checked ~ label:nth-of-type(1),
+.rating input:nth-of-type(3):checked ~ label:nth-of-type(3),
+.rating input:nth-of-type(3):checked ~ label:nth-of-type(5),
+.rating input:nth-of-type(4):checked ~ label:nth-of-type(1),
+.rating input:nth-of-type(4):checked ~ label:nth-of-type(3),
+.rating input:nth-of-type(4):checked ~ label:nth-of-type(5),
+.rating input:nth-of-type(4):checked ~ label:nth-of-type(7),
+.rating input:nth-of-type(5):checked ~ label:nth-of-type(1),
+.rating input:nth-of-type(5):checked ~ label:nth-of-type(3),
+.rating input:nth-of-type(5):checked ~ label:nth-of-type(5),
+.rating input:nth-of-type(5):checked ~ label:nth-of-type(7),
+.rating input:nth-of-type(5):checked ~ label:nth-of-type(9) {
   background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" fill="%23f39c12"/></svg>');
 }
+
+/* Hover effects removed to simplify code */
 
 /* Buttons */
 .btn {

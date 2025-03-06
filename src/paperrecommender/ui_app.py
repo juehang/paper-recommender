@@ -11,7 +11,7 @@ def main():
     parser = argparse.ArgumentParser(description="Paper Recommender UI")
     
     # UI options
-    parser.add_argument("--mode", default="chrome-app", choices=["chrome", "chrome-app", "electron", "browser", "default"],
+    parser.add_argument("--mode", default="chrome", choices=["chrome", "electron", "browser", "default"],
                         help="Mode to start Eel in (default: chrome)")
     parser.add_argument("--host", default="localhost", help="Host to bind to (default: localhost)")
     parser.add_argument("--port", type=int, default=8000, help="Port to bind to (default: 8000)")

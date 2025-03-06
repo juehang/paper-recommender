@@ -253,6 +253,24 @@ function renderOnboardingPapers() {
   }
 }
 
+// Function to update star rating visual state
+function updateStarRating(container, selectedValue) {
+  // Get all star labels in this container
+  const labels = container.querySelectorAll('label');
+  
+  // Update each label based on its value compared to the selected value
+  labels.forEach(label => {
+    const starValue = parseInt(label.dataset.value);
+    
+    // If star value is less than or equal to selected value, highlight it
+    if (starValue <= selectedValue) {
+      label.style.backgroundImage = 'url(\'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" fill="%23f39c12"/></svg>\')';
+    } else {
+      label.style.backgroundImage = 'url(\'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" fill="%23ddd"/></svg>\')';
+    }
+  });
+}
+
 // Create a paper card element
 function createPaperCard(paper, isOnboarding = false) {
   const paperCard = document.createElement('div');
@@ -275,25 +293,9 @@ function createPaperCard(paper, isOnboarding = false) {
     paperCard.appendChild(link);
   }
   
-  // Abstract toggle
-  const abstractToggle = document.createElement('button');
-  abstractToggle.className = 'btn btn-secondary mt-2 mb-2';
-  abstractToggle.textContent = 'Show Abstract';
-  abstractToggle.addEventListener('click', () => {
-    const abstractElement = paperCard.querySelector('.paper-abstract');
-    if (abstractElement.classList.contains('hidden')) {
-      abstractElement.classList.remove('hidden');
-      abstractToggle.textContent = 'Hide Abstract';
-    } else {
-      abstractElement.classList.add('hidden');
-      abstractToggle.textContent = 'Show Abstract';
-    }
-  });
-  paperCard.appendChild(abstractToggle);
-  
-  // Paper abstract (hidden by default)
+  // Paper abstract (visible by default)
   const abstract = document.createElement('div');
-  abstract.className = 'paper-abstract hidden';
+  abstract.className = 'paper-abstract';
   abstract.textContent = paper.abstract;
   paperCard.appendChild(abstract);
   
@@ -334,6 +336,9 @@ function createPaperCard(paper, isOnboarding = false) {
         }
         state.recommendationRatings[paper.globalIndex] = i;
       }
+      
+      // Update the visual state of the stars
+      updateStarRating(ratingContainer, i);
     });
     
     const label = document.createElement('label');
