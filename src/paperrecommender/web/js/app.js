@@ -100,11 +100,15 @@ async function initializeView(view) {
 
 // Load configuration
 async function loadConfig() {
+  console.log("Starting to load configuration...");
   showLoading(true, 'Loading configuration...');
   try {
+    console.log("Calling eel.get_config()...");
     state.config = await eel.get_config()();
+    console.log(`Configuration loaded: ${Object.keys(state.config).length} keys`);
     updateConfigDisplay();
   } catch (error) {
+    console.error("Error loading configuration:", error);
     showAlert(`Error loading configuration: ${error}`, 'danger');
   } finally {
     showLoading(false);

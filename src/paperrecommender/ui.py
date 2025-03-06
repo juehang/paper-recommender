@@ -126,8 +126,21 @@ def get_config() -> Dict[str, Any]:
     """
     global config
     if config is None:
+        print("Loading configuration...")
         config = load_config()
-    return config
+        print(f"Configuration loaded: {len(config)} keys")
+    
+    # Create a clean copy of the config that's guaranteed to be JSON-serializable
+    json_safe_config = {}
+    for key, value in config.items():
+        # Convert Path objects to strings
+        if isinstance(value, (Path, os.PathLike)):
+            json_safe_config[key] = str(value)
+        else:
+            json_safe_config[key] = value
+    
+    print(f"Returning JSON-safe configuration with {len(json_safe_config)} keys")
+    return json_safe_config
 
 @eel.expose
 def save_config(new_config: Dict[str, Any]) -> bool:
