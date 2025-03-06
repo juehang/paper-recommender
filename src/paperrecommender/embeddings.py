@@ -8,7 +8,7 @@ class EmbeddingModel:
     """
     Base class for embedding models.
     """
-    def __init__(self, max_cache_size=1000, cache_path=None):
+    def __init__(self, max_cache_size=3000, cache_path=None):
         self.progress_tracker = None
         self.embedding_cache = {}  # Cache for storing embeddings
         self.max_cache_size = max_cache_size
@@ -109,7 +109,7 @@ class OllamaEmbedding(EmbeddingModel):
     Class for generating embeddings using the Ollama API.
     """
     def __init__(self, url="http://localhost:11434/api/embeddings", model="nomic-embed-text", 
-                 max_cache_size=2000, cache_path=None):
+                 max_cache_size=3000, cache_path=None):
         super().__init__(max_cache_size=max_cache_size, cache_path=cache_path)
         self.url = url
         self.model = model
@@ -125,7 +125,7 @@ class OpenAIEmbedding(EmbeddingModel):
     Class for generating embeddings using the OpenAI API.
     """
     def __init__(self, api_key, model="text-embedding-ada-002", 
-                 max_cache_size=2000, cache_path=None):
+                 max_cache_size=3000, cache_path=None):
         super().__init__(max_cache_size=max_cache_size, cache_path=cache_path)
         self.client = OpenAI(api_key=api_key)
         self.model = model

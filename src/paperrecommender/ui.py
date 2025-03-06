@@ -276,8 +276,9 @@ def get_recommendations(
     # Convert to JSON-serializable format
     result = []
     for rec in recommendations:
-        # Create a copy without the document and embedding (not needed in UI)
-        rec_copy = {k: v for k, v in rec.items() if k != 'document' and k != 'embedding'}
+        # Create a copy without the embedding (not needed in UI)
+        # but keep the document field which is needed for rating submissions
+        rec_copy = {k: v for k, v in rec.items() if k != 'embedding'}
         result.append(rec_copy)
     
     return result
