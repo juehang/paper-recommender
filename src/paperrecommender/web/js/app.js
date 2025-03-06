@@ -310,8 +310,8 @@ function createPaperCard(paper, isOnboarding = false) {
   const ratingContainer = document.createElement('div');
   ratingContainer.className = 'rating';
   
-  // Create 5 stars
-  for (let i = 5; i >= 1; i--) {
+  // Create 5 stars (left to right)
+  for (let i = 1; i <= 5; i++) {
     const input = document.createElement('input');
     input.type = 'radio';
     input.name = `rating-${paper.globalIndex}`;
@@ -339,6 +339,7 @@ function createPaperCard(paper, isOnboarding = false) {
     const label = document.createElement('label');
     label.setAttribute('for', `rating-${paper.globalIndex}-${i}`);
     label.title = `${i} stars`;
+    label.dataset.value = i; // Add data attribute for CSS selection
     
     ratingContainer.appendChild(input);
     ratingContainer.appendChild(label);
@@ -464,9 +465,8 @@ async function bootstrapRecommender() {
 
 // Initialize recommendations view
 async function initializeRecommendationsView() {
-  showLoading(true, 'Generating recommendations...');
   try {
-    // Get recommendations
+    // Get recommendations - progress will be shown via the progress bar
     const recommendations = await eel.get_recommendations(
       state.config.num_recommendations,
       state.config.exploration_weight,
@@ -485,8 +485,6 @@ async function initializeRecommendationsView() {
     renderRecommendations();
   } catch (error) {
     showAlert(`Error generating recommendations: ${error}`, 'danger');
-  } finally {
-    showLoading(false);
   }
 }
 

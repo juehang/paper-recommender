@@ -283,13 +283,25 @@ class GaussianRegressionRecommender(Recommender):
         if filtered_count > 0:
             print(f"Filtered out {filtered_count} papers that already exist in the vector store.")
         
-        # Create a progress tracker for the embedding process
+        # Use the existing progress tracker if available, or create a temporary one
         from .common import ProgressTracker
-        progress_tracker = ProgressTracker(
-            total=len(papers_to_process),
-            description="Generating embeddings for recommendations"
-        )
-        self.embedding_model.set_progress_tracker(progress_tracker)
+        original_tracker = self.embedding_model.progress_tracker
+        
+        # Set up a progress tracker for the embedding process
+        if original_tracker:
+            # Use the existing tracker
+            original_tracker.reset(
+                total=len(papers_to_process),
+                description="Generating embeddings for recommendations"
+            )
+        else:
+            # Create a temporary tracker with disable=True to prevent console output
+            temp_tracker = ProgressTracker(
+                total=len(papers_to_process),
+                description="Generating embeddings for recommendations",
+                disable=True
+            )
+            self.embedding_model.set_progress_tracker(temp_tracker)
         
         # Second pass: generate embeddings with progress tracking
         new_papers = []
@@ -306,9 +318,15 @@ class GaussianRegressionRecommender(Recommender):
                 })
         finally:
             # Ensure progress tracker is closed even if an exception occurs
-            progress_tracker.close()
-            # Reset the progress tracker in the embedding model
-            self.embedding_model.set_progress_tracker(None)
+            if original_tracker:
+                original_tracker.close()
+            else:
+                # Close the temporary tracker if we created one
+                self.embedding_model.progress_tracker.close()
+                
+            # Reset the progress tracker in the embedding model if we created a temporary one
+            if not original_tracker:
+                self.embedding_model.set_progress_tracker(None)
         
         # Use config values if not provided
         from .config import load_config

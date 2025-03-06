@@ -150,6 +150,7 @@ main {
 .rating {
   display: flex;
   margin: 1rem 0;
+  flex-direction: row; /* Ensure stars are displayed left-to-right */
 }
 
 .rating input {
@@ -166,12 +167,59 @@ main {
   background-size: contain;
 }
 
+/* Left-to-right star rating: Fill stars up to and including the selected one */
 .rating input:checked ~ label {
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" fill="%23ddd"/></svg>');
+}
+
+/* Use data-value to style stars based on the selected value */
+.rating input:checked + label {
   background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" fill="%23f39c12"/></svg>');
 }
 
+.rating input:checked + label ~ label[data-value="1"],
+.rating input:checked + label ~ label[data-value="2"],
+.rating input:checked + label ~ label[data-value="3"],
+.rating input:checked + label ~ label[data-value="4"],
+.rating input:checked + label ~ label[data-value="5"] {
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" fill="%23ddd"/></svg>');
+}
+
+/* Hover effect for left-to-right */
 .rating label:hover,
 .rating label:hover ~ label {
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" fill="%23ddd"/></svg>');
+}
+
+.rating label:hover ~ label[data-value="1"],
+.rating label:hover ~ label[data-value="2"],
+.rating label:hover ~ label[data-value="3"],
+.rating label:hover ~ label[data-value="4"],
+.rating label:hover ~ label[data-value="5"] {
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" fill="%23ddd"/></svg>');
+}
+
+/* Fill stars from left to right on hover */
+.rating label[data-value="1"]:hover,
+.rating label[data-value="2"]:hover,
+.rating label[data-value="3"]:hover,
+.rating label[data-value="4"]:hover,
+.rating label[data-value="5"]:hover,
+.rating label[data-value="1"]:hover ~ label[data-value="1"],
+.rating label[data-value="2"]:hover ~ label[data-value="1"],
+.rating label[data-value="2"]:hover ~ label[data-value="2"],
+.rating label[data-value="3"]:hover ~ label[data-value="1"],
+.rating label[data-value="3"]:hover ~ label[data-value="2"],
+.rating label[data-value="3"]:hover ~ label[data-value="3"],
+.rating label[data-value="4"]:hover ~ label[data-value="1"],
+.rating label[data-value="4"]:hover ~ label[data-value="2"],
+.rating label[data-value="4"]:hover ~ label[data-value="3"],
+.rating label[data-value="4"]:hover ~ label[data-value="4"],
+.rating label[data-value="5"]:hover ~ label[data-value="1"],
+.rating label[data-value="5"]:hover ~ label[data-value="2"],
+.rating label[data-value="5"]:hover ~ label[data-value="3"],
+.rating label[data-value="5"]:hover ~ label[data-value="4"],
+.rating label[data-value="5"]:hover ~ label[data-value="5"] {
   background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" fill="%23f39c12"/></svg>');
 }
 
