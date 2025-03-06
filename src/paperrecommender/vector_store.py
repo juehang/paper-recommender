@@ -1,5 +1,6 @@
 import chromadb
 import uuid
+import time
 
 class VectorStore:
     def __init__(self, embedding):
@@ -40,14 +41,17 @@ class ChromaVectorStore(VectorStore):
         Args:
            document (string): The document to add.
             link (string): URL associated with the document.
+            rating (int/float): Rating associated with the document.
         Returns:
             None
         """
         doc_id = str(uuid.uuid4())
+        # Get current Unix timestamp (seconds since epoch)
+        timestamp = time.time()
         self.collection.add(
             ids=[doc_id],
             documents=[document],
-            metadatas={"link": link, "rating": rating},
+            metadatas={"link": link, "rating": rating, "timestamp": timestamp},
             )
         return None
     
