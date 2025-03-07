@@ -131,8 +131,7 @@ class GaussianRegressionRecommender(Recommender):
         # Convert to numpy arrays
         X = np.array(X)
         y = np.array(y)
-        
-        return X, y
+        return X, np.log(y + 0.1)
         
     def bootstrap(self, force=False):
         """
@@ -156,10 +155,10 @@ class GaussianRegressionRecommender(Recommender):
         # Fit the Gaussian Process Regression model
         # Define the kernel with hyperparameters
         # Using RBF kernel for smoothness + WhiteKernel for observation noise
-        kernel = RBF(length_scale=1.0, length_scale_bounds=(1e-3, 1e1)) + WhiteKernel(noise_level=1.0, noise_level_bounds=(1e-5, 20.))
+        kernel = RBF(length_scale=1.0, length_scale_bounds=(5e-3, 1e1)) + WhiteKernel(noise_level=1.0, noise_level_bounds=(1e-5, 20.))
         
         # Create and fit the model
-        self.model = GaussianProcessRegressor(kernel=kernel, n_restarts_optimizer=9)
+        self.model = GaussianProcessRegressor(kernel=kernel, n_restarts_optimizer=9, normalize_y=True)
         self.model.fit(X, y)
         
         # Save the model
@@ -167,7 +166,10 @@ class GaussianRegressionRecommender(Recommender):
         
         return True
     
-    def predict_rating_with_sampling(self, document, n_nearest=10, num_samples=100, N_sigma=1.):
+    def _gaussian_posterior(self, mean1, var1, mean2, var2):
+        return (mean1/var1 + mean2/var2)/(1/var1 + 1/var2), var1*var2/(var1+var2)
+    
+    def predict_rating_with_sampling(self, document, n_nearest=10, num_samples=100, num_samples_per_posterior=5, N_sigma=1.,):
         """
         Predict rating using GP sampling for robust uncertainty estimation.
         
@@ -175,6 +177,7 @@ class GaussianRegressionRecommender(Recommender):
             document (str): Document to predict rating for
             n_nearest (int): Number of nearest embeddings to use
             num_samples (int): Number of GP samples to draw
+            num_samples_per_posterior (int): Number of times to sample from each gaussian posterior
             N_sigma (float): Number of standard deviations to use for confidence interval
             
         Returns:
@@ -187,25 +190,18 @@ class GaussianRegressionRecommender(Recommender):
             return None, None, None
         
         # Get similarities and ratings
-        similarities = [1 - dist for dist in results["distances"][0]]
-        ratings = [float(meta.get("rating", 0)) for meta in results["metadatas"][0]]
+        similarities = np.array([1 - dist for dist in results["distances"][0]])
+        ratings = np.array([float(meta.get("rating", 0)) for meta in results["metadatas"][0]])
+
+        mask = np.logical_and(ratings<=5, ratings>=1)
+        similarities = similarities[mask]
+        ratings = ratings[mask]
         
         # Reshape for prediction
-        X_pred = np.array(similarities).reshape(-1, 1)
+        X_pred = similarities.reshape(-1, 1)
         
         # Draw samples from the GP posterior
-        y_samples = self.model.sample_y(X_pred, num_samples)
-        
-        # Calculate the expected variance between ratings as a function of similarity
-        predicted_variances = np.mean(y_samples, axis=1)
-        
-        # Convert variances to weights (higher variance = lower weight)
-        epsilon = 1e-6  # Small value to avoid division by zero
-        weights = 1.0 / (predicted_variances + epsilon)
-        weights = weights / np.sum(weights)  # Normalize weights
-        
-        # Calculate weighted rating
-        weighted_rating = np.sum(weights * np.array(ratings))
+        y_samples = np.clip(np.exp(self.model.sample_y(X_pred, num_samples))-0.1, a_min=0.1, a_max=np.inf)
         
         # Calculate statistics from samples
         sample_ratings = []
@@ -213,13 +209,18 @@ class GaussianRegressionRecommender(Recommender):
             # Get variance predictions for this sample
             sample_variances = y_samples[:, sample_idx]
             
-            # Convert to weights
-            sample_weights = 1.0 / (sample_variances + epsilon)
-            sample_weights = sample_weights / np.sum(sample_weights)
+            posterior_mean = ratings[0]
+            posterior_var = sample_variances[0]
+
+            for j in range(1, len(ratings)):
+                posterior_mean, posterior_var = self._gaussian_posterior(
+                    posterior_mean, posterior_var, ratings[j], sample_variances[j]
+                )
             
             # Calculate weighted rating for this sample
-            sample_weighted_rating = np.sum(sample_weights * np.array(ratings))
-            sample_ratings.append(sample_weighted_rating)
+            sample_ratings.extend(np.random.normal(
+                loc=posterior_mean, scale=np.sqrt(posterior_var), size=num_samples_per_posterior
+                ))
         
         # Calculate bounds from samples using N_sigma
         # Convert N_sigma to quantiles using the normal distribution CDF
@@ -230,7 +231,7 @@ class GaussianRegressionRecommender(Recommender):
         lower_bound = np.quantile(sample_ratings, lower_quantile)
         upper_bound = np.quantile(sample_ratings, upper_quantile)
         
-        return weighted_rating, lower_bound, upper_bound
+        return np.median(sample_ratings), lower_bound, upper_bound
     
     def recommend(self, num_recommendations=10, exploration_weight=1.0, n_nearest_embeddings=None, gp_num_samples=None):
         """
@@ -283,13 +284,25 @@ class GaussianRegressionRecommender(Recommender):
         if filtered_count > 0:
             print(f"Filtered out {filtered_count} papers that already exist in the vector store.")
         
-        # Create a progress tracker for the embedding process
+        # Use the existing progress tracker if available, or create a temporary one
         from .common import ProgressTracker
-        progress_tracker = ProgressTracker(
-            total=len(papers_to_process),
-            description="Generating embeddings for recommendations"
-        )
-        self.embedding_model.set_progress_tracker(progress_tracker)
+        original_tracker = self.embedding_model.progress_tracker
+        
+        # Set up a progress tracker for the embedding process
+        if original_tracker:
+            # Use the existing tracker
+            original_tracker.reset(
+                total=len(papers_to_process),
+                description="Generating embeddings for recommendations"
+            )
+        else:
+            # Create a temporary tracker with disable=True to prevent console output
+            temp_tracker = ProgressTracker(
+                total=len(papers_to_process),
+                description="Generating embeddings for recommendations",
+                disable=True
+            )
+            self.embedding_model.set_progress_tracker(temp_tracker)
         
         # Second pass: generate embeddings with progress tracking
         new_papers = []
@@ -306,9 +319,15 @@ class GaussianRegressionRecommender(Recommender):
                 })
         finally:
             # Ensure progress tracker is closed even if an exception occurs
-            progress_tracker.close()
-            # Reset the progress tracker in the embedding model
-            self.embedding_model.set_progress_tracker(None)
+            if original_tracker:
+                original_tracker.close()
+            else:
+                # Close the temporary tracker if we created one
+                self.embedding_model.progress_tracker.close()
+                
+            # Reset the progress tracker in the embedding model if we created a temporary one
+            if not original_tracker:
+                self.embedding_model.set_progress_tracker(None)
         
         # Use config values if not provided
         from .config import load_config

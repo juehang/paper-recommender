@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Paper Recommender</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <script type="text/javascript" src="/eel.js"></script>
+  <script type="text/javascript" src="https://cdn.plot.ly/plotly-3.0.1.min.js"></script>
+  <script type="text/javascript" src="js/app.js"></script>
+</head>
+<body>
+  <!-- Header -->
+  <!-- <header>
+    <div class="container">
+      <h1>Paper Recommender</h1>
+    </div>
+  </header> -->
+  
+  <!-- Navigation -->
+  <nav>
+    <div class="container">
+      <ul>
+        <li><a href="#" data-view="home" class="active">Home</a></li>
+        <li><a href="#" data-view="onboarding">Onboarding</a></li>
+        <li><a href="#" data-view="recommendations">Recommendations</a></li>
+        <li><a href="#" data-view="database">Database</a></li>
+        <li><a href="#" data-view="visualization">Visualization</a></li>
+        <li><a href="#" data-view="settings">Settings</a></li>
+      </ul>
+    </div>
+  </nav>
+  
+  <!-- Main Content -->
+  <main>
+    <div class="container">
+      <!-- Alerts Container -->
+      <div id="alerts-container"></div>
+      
+      <!-- Progress Bar -->
+      <div class="progress-container">
+        <div id="progress-bar" class="progress-bar"></div>
+      </div>
+      <div id="progress-text" class="progress-text"></div>
+      
+      <!-- Home View -->
+      <div id="home-view" class="view">
+        <div class="card">
+          <div class="card-header">
+            <h2>Welcome to Paper Recommender</h2>
+          </div>
+          <div class="card-body">
+            <p>Paper Recommender helps researchers discover relevant papers by:</p>
+            <ol>
+              <li>Fetching recent papers from arXiv</li>
+              <li>Using text embeddings to represent paper content</li>
+              <li>Learning your preferences through an onboarding process</li>
+              <li>Recommending papers using a variance-based Gaussian Process Regression model</li>
+              <li>Balancing exploration and exploitation to improve recommendations over time</li>
+            </ol>
+            
+            <div class="mt-4">
+              <h3>Getting Started</h3>
+              <p>If this is your first time using Paper Recommender, you'll need to complete the onboarding process:</p>
+              <a href="#" class="btn mt-2" data-view="onboarding">Start Onboarding</a>
+            </div>
+            
+            <div class="mt-4">
+              <h3>Already Onboarded?</h3>
+              <p>If you've already completed the onboarding process, you can get paper recommendations:</p>
+              <a href="#" class="btn mt-2" data-view="recommendations">Get Recommendations</a>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Onboarding View -->
+      <div id="onboarding-view" class="view hidden">
+        <div class="card mb-4">
+          <div class="card-header">
+            <h2>Onboarding</h2>
+          </div>
+          <div class="card-body">
+            <p>The onboarding process helps the system learn your preferences by asking you to rate papers. You'll be presented with papers selected using different strategies:</p>
+            <ul>
+              <li><strong>Random Selection:</strong> Papers selected randomly from recent submissions</li>
+              <li><strong>Diverse Selection:</strong> Papers selected to maximize diversity</li>
+            </ul>
+            <p>Rate papers on a scale of 1-5 to help build a recommendation model tailored to your interests.</p>
+          </div>
+        </div>
+        
+        <div class="card mb-4">
+          <div class="card-header">
+            <h3>Add Custom Paper</h3>
+          </div>
+          <div class="card-body">
+            <p>You can also add a custom paper that you've already read and rate it:</p>
+            <form id="custom-paper-form">
+              <div class="form-group">
+                <label for="custom-paper-title">Title:</label>
+                <input type="text" id="custom-paper-title" required>
+              </div>
+              <div class="form-group">
+                <label for="custom-paper-abstract">Abstract:</label>
+                <textarea id="custom-paper-abstract" rows="5" required></textarea>
+              </div>
+              <div class="form-group">
+                <label for="custom-paper-link">Link (optional):</label>
+                <input type="text" id="custom-paper-link">
+              </div>
+              <div class="form-group">
+                <label for="custom-paper-rating">Rating (1-5):</label>
+                <input type="number" id="custom-paper-rating" min="1" max="5" value="3" required>
+              </div>
+              <button type="submit" class="btn">Add Custom Paper</button>
+            </form>
+          </div>
+        </div>
+        
+        <form id="onboarding-form">
+          <div id="onboarding-papers"></div>
+          <button type="submit" class="btn btn-primary mt-3">Submit Ratings</button>
+        </form>
+      </div>
+      
+      <!-- Recommendations View -->
+      <div id="recommendations-view" class="view hidden">
+        <div class="card mb-4">
+          <div class="card-header">
+            <h2>Recommendations</h2>
+          </div>
+          <div class="card-body">
+            <p>Based on your preferences, here are papers you might find interesting.</p>
+            <p>Rate the recommended papers to further improve future recommendations.</p>
+            <div class="button-group mt-2">
+              <button id="refresh-recommendations" class="btn">Refresh Recommendations</button>
+              <button id="retrain-model" class="btn">Re-train Model</button>
+            </div>
+          </div>
+        </div>
+        
+        <form id="recommendation-form">
+          <div id="recommendation-papers"></div>
+        </form>
+      </div>
+      
+      <!-- Database View -->
+      <div id="database-view" class="view hidden">
+        <div class="card mb-4">
+          <div class="card-header">
+            <h2>ChromaDB Browser</h2>
+          </div>
+          <div class="card-body">
+            <p>Browse papers stored in the vector database.</p>
+            
+            <div class="form-row">
+              <div class="form-group col-md-4">
+                <label for="db-time-filter">Time Range:</label>
+                <select id="db-time-filter">
+                  <option value="30" selected>Last 30 days</option>
+                  <option value="90">Last 90 days</option>
+                  <option value="180">Last 6 months</option>
+                  <option value="365">Last year</option>
+                  <option value="0">All time</option>
+                </select>
+              </div>
+              
+              <div class="form-group col-md-4">
+                <label for="db-search">Text Search:</label>
+                <input type="text" id="db-search" placeholder="Filter by title or content...">
+              </div>
+              
+              <div class="form-group col-md-4">
+                <label for="db-sort">Sort by:</label>
+                <select id="db-sort">
+                  <option value="timestamp-desc">Date Added (Newest First)</option>
+                  <option value="timestamp-asc">Date Added (Oldest First)</option>
+                  <option value="rating-desc">Rating (High to Low)</option>
+                  <option value="rating-asc">Rating (Low to High)</option>
+                </select>
+              </div>
+            </div>
+            
+            <div class="semantic-search-container mt-3">
+              <h3>Semantic Search</h3>
+              <p>Find papers that are conceptually similar to your query, even if they don't contain the exact keywords.</p>
+              
+              <div class="form-row">
+                <div class="form-group col-md-8">
+                  <input type="text" id="semantic-search-input" placeholder="Enter your semantic search query...">
+                </div>
+                <div class="form-group col-md-2">
+                  <select id="semantic-results-count">
+                    <option value="5">5 results</option>
+                    <option value="10" selected>10 results</option>
+                    <option value="20">20 results</option>
+                    <option value="50">50 results</option>
+                  </select>
+                </div>
+                <div class="form-group col-md-2">
+                  <button id="semantic-search-button" class="btn">Search</button>
+                </div>
+              </div>
+            </div>
+            
+            <button id="refresh-database" class="btn mt-2">Refresh Data</button>
+          </div>
+        </div>
+        
+        <div id="database-papers" class="papers-container">
+          <!-- Papers will be loaded here -->
+        </div>
+      </div>
+      
+      <!-- Visualization View -->
+      <div id="visualization-view" class="view hidden">
+        <div class="card mb-4">
+          <div class="card-header">
+            <h2>Gaussian Process Visualization</h2>
+          </div>
+          <div class="card-body">
+            <p>Visualize the Gaussian Process model used for recommendations.</p>
+            
+            <div class="form-row">
+              <div class="form-group col-md-6">
+                <label for="sample-size">Sample Size:</label>
+                <input type="number" id="sample-size" min="10" max="100" value="30">
+                <small>Number of random papers to include in visualization</small>
+              </div>
+              
+              <div class="form-group col-md-6">
+                <button id="generate-visualization" class="btn">Generate Visualization</button>
+              </div>
+            </div>
+            
+            <div id="visualization-container" class="mt-4">
+              <div id="visualization-loading" class="hidden">
+                <div class="spinner"></div>
+                <p>Generating visualization...</p>
+              </div>
+              <div id="plotly-visualization" style="width:100%; height:600px;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Settings View -->
+      <div id="settings-view" class="view hidden">
+        <div class="card">
+          <div class="card-header">
+            <h2>Settings</h2>
+          </div>
+          <div class="card-body">
+            <form id="config-form">
+              <h3 class="mb-3">Data Sources</h3>
+              <div class="form-group">
+                <label for="period_hours">Time Period (hours):</label>
+                <input type="number" id="period_hours" name="period_hours" min="1" max="720">
+                <small>Time window for fetching recent papers from arXiv</small>
+              </div>
+              
+              <h3 class="mb-3 mt-4">Embeddings</h3>
+              <div class="form-group">
+                <label for="embedding_provider">Embedding Provider:</label>
+                <select id="embedding_provider" name="embedding_provider">
+                  <option value="ollama">Ollama (local)</option>
+                  <option value="openai">OpenAI (API)</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="openai_api_key">OpenAI API Key:</label>
+                <input type="text" id="openai_api_key" name="openai_api_key">
+                <small>Only used when embedding provider is "openai"</small>
+              </div>
+              <div class="form-group">
+                <label for="openai_embedding_model">OpenAI Embedding Model:</label>
+                <input type="text" id="openai_embedding_model" name="openai_embedding_model">
+                <small>Only used when embedding provider is "openai"</small>
+              </div>
+              
+              <h3 class="mb-3 mt-4">Onboarding</h3>
+              <div class="form-group">
+                <label for="random_sample_size">Random Sample Size:</label>
+                <input type="number" id="random_sample_size" name="random_sample_size" min="1" max="20">
+                <small>Number of random papers to show during onboarding</small>
+              </div>
+              <div class="form-group">
+                <label for="diverse_sample_size">Diverse Sample Size:</label>
+                <input type="number" id="diverse_sample_size" name="diverse_sample_size" min="1" max="20">
+                <small>Number of diverse papers to show during onboarding</small>
+              </div>
+              
+              <h3 class="mb-3 mt-4">Recommendations</h3>
+              <div class="form-group">
+                <label for="num_recommendations">Number of Recommendations:</label>
+                <input type="number" id="num_recommendations" name="num_recommendations" min="1" max="20">
+                <small>Number of recommendations to show</small>
+              </div>
+              <div class="form-group">
+                <label for="exploration_weight">Exploration Weight:</label>
+                <input type="number" id="exploration_weight" name="exploration_weight" min="0" max="5" step="0.1">
+                <small>Controls the balance between exploration and exploitation (higher values favor exploration)</small>
+              </div>
+              <div class="form-group">
+                <label for="max_samples">Max Samples:</label>
+                <input type="number" id="max_samples" name="max_samples" min="10" max="1000">
+                <small>Maximum number of samples for similarity search</small>
+              </div>
+              <div class="form-group">
+                <label for="n_nearest_embeddings">Nearest Embeddings:</label>
+                <input type="number" id="n_nearest_embeddings" name="n_nearest_embeddings" min="1" max="100">
+                <small>Number of nearest embeddings to use for prediction</small>
+              </div>
+              <div class="form-group">
+                <label for="gp_num_samples">GP Samples:</label>
+                <input type="number" id="gp_num_samples" name="gp_num_samples" min="10" max="1000">
+                <small>Number of GP samples for uncertainty estimation</small>
+              </div>
+              <div class="form-group">
+                <label for="gp_bootstrap_num_datapoints">GP Bootstrap Datapoints:</label>
+                <input type="number" id="gp_bootstrap_num_datapoints" name="gp_bootstrap_num_datapoints" min="10" max="1000">
+                <small>Number of datapoints to use for GP bootstrap</small>
+              </div>
+              
+              <h3 class="mb-3 mt-4">Storage</h3>
+              <div class="form-group">
+                <label for="chroma_db_path">ChromaDB Path:</label>
+                <input type="text" id="chroma_db_path" name="chroma_db_path">
+                <small>Path to ChromaDB directory</small>
+              </div>
+              <div class="form-group">
+                <label for="model_path">Model Path:</label>
+                <input type="text" id="model_path" name="model_path">
+                <small>Path to model pickle file</small>
+              </div>
+              <div class="form-group">
+                <label for="embedding_cache_path">Embedding Cache Path:</label>
+                <input type="text" id="embedding_cache_path" name="embedding_cache_path">
+                <small>Path to embedding cache file</small>
+              </div>
+              
+              <button type="submit" class="btn btn-primary mt-4">Save Settings</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+  
+  <!-- Loading Overlay is now created dynamically in JavaScript -->
+  
+  <!-- Footer -->
+  <footer>
+    <div class="container">
+      <p>Paper Recommender by Qin Juehang</p>
+    </div>
+  </footer>
+</body>
+</html>
