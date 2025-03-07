@@ -221,6 +221,16 @@ main {
   background-color: #2980b9;
 }
 
+/* Button group */
+.button-group {
+  display: flex;
+  gap: 10px;
+}
+
+.button-group .btn {
+  flex: 1;
+}
+
 .btn-secondary {
   background-color: var(--secondary-color);
 }

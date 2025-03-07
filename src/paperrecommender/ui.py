@@ -509,7 +509,7 @@ def get_gp_visualization_data(sample_size: int = 30) -> Dict[str, Any]:
     for i in range(sample_size):
         for j in range(i+1, sample_size):
             similarity = similarity_matrix[i, j]
-            rating_diff = (ratings[i] - ratings[j])**2
+            rating_diff = np.log((ratings[i] - ratings[j])**2)
             
             X.append([similarity])
             y.append(rating_diff)

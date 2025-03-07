@@ -122,7 +122,7 @@ class GaussianRegressionRecommender(Recommender):
                     
                     # Add to training data
                     X.append([similarity])  # Feature: similarity
-                    y.append(rating_variance)  # Target: variance between ratings
+                    y.append(np.log(rating_variance))  # Target: variance between ratings
         
         # If we don't have enough data points, we can't fit the model
         if len(X) < 10:  # Arbitrary minimum threshold
@@ -156,7 +156,7 @@ class GaussianRegressionRecommender(Recommender):
         # Fit the Gaussian Process Regression model
         # Define the kernel with hyperparameters
         # Using RBF kernel for smoothness + WhiteKernel for observation noise
-        kernel = RBF(length_scale=1.0, length_scale_bounds=(1e-3, 1e1)) + WhiteKernel(noise_level=1.0, noise_level_bounds=(1e-5, 20.))
+        kernel = RBF(length_scale=1.0, length_scale_bounds=(5e-3, 1e1)) + WhiteKernel(noise_level=1.0, noise_level_bounds=(1e-5, 20.))
         
         # Create and fit the model
         self.model = GaussianProcessRegressor(kernel=kernel, n_restarts_optimizer=9, normalize_y=True)
@@ -202,18 +202,7 @@ class GaussianRegressionRecommender(Recommender):
         X_pred = similarities.reshape(-1, 1)
         
         # Draw samples from the GP posterior
-        y_samples = np.clip(self.model.sample_y(X_pred, num_samples), a_min=0.5, a_max=np.inf)
-        
-        # Calculate the expected variance between ratings as a function of similarity
-        predicted_variances = np.mean(y_samples, axis=1)
-        
-        # Convert variances to weights (higher variance = lower weight)
-        epsilon = 1e-6  # Small value to avoid division by zero
-        weights = 1.0 / (predicted_variances + epsilon)
-        weights = weights / np.sum(weights)  # Normalize weights
-        
-        # Calculate weighted rating
-        weighted_rating = np.sum(weights * ratings)
+        y_samples = np.clip(np.exp(self.model.sample_y(X_pred, num_samples), a_min=0.5, a_max=np.inf))
         
         # Calculate statistics from samples
         sample_ratings = []
@@ -243,7 +232,7 @@ class GaussianRegressionRecommender(Recommender):
         lower_bound = np.quantile(sample_ratings, lower_quantile)
         upper_bound = np.quantile(sample_ratings, upper_quantile)
         
-        return weighted_rating, lower_bound, upper_bound
+        return np.median(sample_ratings), lower_bound, upper_bound
     
     def recommend(self, num_recommendations=10, exploration_weight=1.0, n_nearest_embeddings=None, gp_num_samples=None):
         """

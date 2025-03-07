@@ -599,6 +599,22 @@ function setupEventListeners() {
     });
   }
   
+  // Refresh recommendations button
+  const refreshRecommendations = document.getElementById('refresh-recommendations');
+  if (refreshRecommendations) {
+    refreshRecommendations.addEventListener('click', () => {
+      initializeRecommendationsView(); // Reload recommendations
+    });
+  }
+  
+  // Re-train model button
+  const retrainModel = document.getElementById('retrain-model');
+  if (retrainModel) {
+    retrainModel.addEventListener('click', () => {
+      bootstrapRecommender(); // Force re-training of the model
+    });
+  }
+  
   // Register for progress updates
   eel.expose(updateProgress);
 }
