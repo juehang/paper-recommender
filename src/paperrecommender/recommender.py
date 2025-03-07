@@ -167,7 +167,10 @@ class GaussianRegressionRecommender(Recommender):
         
         return True
     
-    def predict_rating_with_sampling(self, document, n_nearest=10, num_samples=100, N_sigma=1.):
+    def _gaussian_posterior(self, mean1, var1, mean2, var2):
+        return (mean1/var1 + mean2/var2)/(1/var1 + 1/var2), var1*var2/(var1+var2)
+    
+    def predict_rating_with_sampling(self, document, n_nearest=10, num_samples=100, num_samples_per_posterior=5, N_sigma=1.,):
         """
         Predict rating using GP sampling for robust uncertainty estimation.
         
@@ -175,6 +178,7 @@ class GaussianRegressionRecommender(Recommender):
             document (str): Document to predict rating for
             n_nearest (int): Number of nearest embeddings to use
             num_samples (int): Number of GP samples to draw
+            num_samples_per_posterior (int): Number of times to sample from each gaussian posterior
             N_sigma (float): Number of standard deviations to use for confidence interval
             
         Returns:
@@ -188,13 +192,13 @@ class GaussianRegressionRecommender(Recommender):
         
         # Get similarities and ratings
         similarities = [1 - dist for dist in results["distances"][0]]
-        ratings = [float(meta.get("rating", 0)) for meta in results["metadatas"][0]]
+        ratings = np.array([float(meta.get("rating", 0)) for meta in results["metadatas"][0]])
         
         # Reshape for prediction
         X_pred = np.array(similarities).reshape(-1, 1)
         
         # Draw samples from the GP posterior
-        y_samples = self.model.sample_y(X_pred, num_samples)
+        y_samples = np.clip(self.model.sample_y(X_pred, num_samples), a_min=0.5, a_max=np.inf)
         
         # Calculate the expected variance between ratings as a function of similarity
         predicted_variances = np.mean(y_samples, axis=1)
@@ -205,7 +209,7 @@ class GaussianRegressionRecommender(Recommender):
         weights = weights / np.sum(weights)  # Normalize weights
         
         # Calculate weighted rating
-        weighted_rating = np.sum(weights * np.array(ratings))
+        weighted_rating = np.sum(weights * ratings)
         
         # Calculate statistics from samples
         sample_ratings = []
@@ -213,13 +217,18 @@ class GaussianRegressionRecommender(Recommender):
             # Get variance predictions for this sample
             sample_variances = y_samples[:, sample_idx]
             
-            # Convert to weights
-            sample_weights = 1.0 / (sample_variances + epsilon)
-            sample_weights = sample_weights / np.sum(sample_weights)
+            posterior_mean = ratings[0]
+            posterior_var = sample_variances[0]
+
+            for j in range(1, n_nearest):
+                posterior_mean, posterior_var = self._gaussian_posterior(
+                    posterior_mean, posterior_var, ratings[j], sample_variances[j]
+                )
             
             # Calculate weighted rating for this sample
-            sample_weighted_rating = np.sum(sample_weights * np.array(ratings))
-            sample_ratings.append(sample_weighted_rating)
+            sample_ratings.extend(np.random.normal(
+                loc=posterior_mean, scale=np.sqrt(posterior_var), size=num_samples_per_posterior
+                ))
         
         # Calculate bounds from samples using N_sigma
         # Convert N_sigma to quantiles using the normal distribution CDF

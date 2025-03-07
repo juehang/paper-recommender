@@ -546,16 +546,14 @@ def get_gp_visualization_data(sample_size: int = 30) -> Dict[str, Any]:
         
         # Add prediction curve
         for i, (sim, pred, std) in enumerate(zip(sim_range, mean_predictions, std_predictions)):
-            # Only add every few points to avoid overcrowding
-            if i % 5 == 0:
-                points.append({
-                    "x": float(sim[0]),
-                    "y": float(pred),
-                    "size": float(std),  # Size based on uncertainty
-                    "color": "#e74c3c",  # Red for predictions
-                    "category": "GP Prediction",
-                    "label": None
-                })
+            points.append({
+                "x": float(sim[0]),
+                "y": float(pred),
+                "size": float(std),  # Size based on uncertainty
+                "color": "#e74c3c",  # Red for predictions
+                "category": "GP Prediction",
+                "label": None
+            })
         
         # Return visualization data
         return {
