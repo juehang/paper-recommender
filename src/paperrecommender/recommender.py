@@ -191,11 +191,15 @@ class GaussianRegressionRecommender(Recommender):
             return None, None, None
         
         # Get similarities and ratings
-        similarities = [1 - dist for dist in results["distances"][0]]
+        similarities = np.array([1 - dist for dist in results["distances"][0]])
         ratings = np.array([float(meta.get("rating", 0)) for meta in results["metadatas"][0]])
+
+        mask = np.logical_and(ratings<=5, ratings>=1)
+        similarities = similarities[mask]
+        ratings = ratings[mask]
         
         # Reshape for prediction
-        X_pred = np.array(similarities).reshape(-1, 1)
+        X_pred = similarities.reshape(-1, 1)
         
         # Draw samples from the GP posterior
         y_samples = np.clip(self.model.sample_y(X_pred, num_samples), a_min=0.5, a_max=np.inf)
@@ -220,7 +224,7 @@ class GaussianRegressionRecommender(Recommender):
             posterior_mean = ratings[0]
             posterior_var = sample_variances[0]
 
-            for j in range(1, n_nearest):
+            for j in range(1, len(ratings)):
                 posterior_mean, posterior_var = self._gaussian_posterior(
                     posterior_mean, posterior_var, ratings[j], sample_variances[j]
                 )

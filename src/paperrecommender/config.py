@@ -13,7 +13,7 @@ DEFAULT_CONFIG = {
     "exploration_weight": 0.5,
     "max_samples": 20,
     "period_hours": 48,
-    "random_sample_size": 5,
+    "random_sample_size": 15,
     "diverse_sample_size": 5,
     "num_recommendations": 5,
     "gp_num_samples": 100,  # Number of GP samples for uncertainty estimation

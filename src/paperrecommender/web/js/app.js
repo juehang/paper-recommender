@@ -42,8 +42,19 @@ async function initializeApp() {
 
 // Set up navigation
 function setupNavigation() {
+  // Add event listeners to navigation links in the nav bar
   const navLinks = document.querySelectorAll('nav a');
   navLinks.forEach(link => {
+    link.addEventListener('click', (e) => {
+      e.preventDefault();
+      const view = e.target.getAttribute('data-view');
+      navigateTo(view);
+    });
+  });
+  
+  // Add event listeners to all other elements with data-view attribute (like buttons on the home page)
+  const otherViewLinks = document.querySelectorAll('a[data-view]:not(nav a)');
+  otherViewLinks.forEach(link => {
     link.addEventListener('click', (e) => {
       e.preventDefault();
       const view = e.target.getAttribute('data-view');
