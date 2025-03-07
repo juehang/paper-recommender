@@ -1027,7 +1027,7 @@ async function saveConfig() {
   
   showLoading(true, 'Saving configuration...');
   try {
-    await eel.save_config(newConfig)();
+    await eel.save_ui_config(newConfig)();
     state.config = newConfig;
     showAlert('Configuration saved successfully.', 'success');
   } catch (error) {

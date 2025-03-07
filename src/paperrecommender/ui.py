@@ -143,7 +143,7 @@ def get_config() -> Dict[str, Any]:
     return json_safe_config
 
 @eel.expose
-def save_config(new_config: Dict[str, Any]) -> bool:
+def save_ui_config(new_config: Dict[str, Any]) -> bool:
     """
     Save the configuration.
     
