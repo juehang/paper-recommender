@@ -122,7 +122,7 @@ class GaussianRegressionRecommender(Recommender):
                     
                     # Add to training data
                     X.append([similarity])  # Feature: similarity
-                    y.append(np.log(rating_variance))  # Target: variance between ratings
+                    y.append(rating_variance)  # Target: variance between ratings
         
         # If we don't have enough data points, we can't fit the model
         if len(X) < 10:  # Arbitrary minimum threshold
@@ -131,8 +131,7 @@ class GaussianRegressionRecommender(Recommender):
         # Convert to numpy arrays
         X = np.array(X)
         y = np.array(y)
-        
-        return X, y
+        return X, np.log(y + 0.1)
         
     def bootstrap(self, force=False):
         """
@@ -202,7 +201,7 @@ class GaussianRegressionRecommender(Recommender):
         X_pred = similarities.reshape(-1, 1)
         
         # Draw samples from the GP posterior
-        y_samples = np.clip(np.exp(self.model.sample_y(X_pred, num_samples), a_min=0.5, a_max=np.inf))
+        y_samples = np.clip(np.exp(self.model.sample_y(X_pred, num_samples))-0.1, a_min=0.1, a_max=np.inf)
         
         # Calculate statistics from samples
         sample_ratings = []
