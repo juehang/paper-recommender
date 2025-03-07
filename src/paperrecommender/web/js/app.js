@@ -95,6 +95,9 @@ async function initializeView(view) {
     case 'database':
       await initializeDatabaseView();
       break;
+    case 'visualization':
+      await initializeVisualizationView();
+      break;
     case 'settings':
       await initializeSettingsView();
       break;
@@ -103,6 +106,12 @@ async function initializeView(view) {
 
 // Initialize database view
 async function initializeDatabaseView() {
+  // If we have semantic search results, show them instead of loading all documents
+  if (state.semanticSearchResults && state.semanticSearchResults.length > 0) {
+    renderSemanticSearchResults();
+    return;
+  }
+  
   showLoading(true, 'Loading database entries...');
   try {
     // Get time filter value
@@ -122,6 +131,195 @@ async function initializeDatabaseView() {
   } finally {
     showLoading(false);
   }
+}
+
+// Perform semantic search
+async function performSemanticSearch() {
+  const searchInput = document.getElementById('semantic-search-input');
+  const resultsCountSelect = document.getElementById('semantic-results-count');
+  const timeFilterSelect = document.getElementById('db-time-filter');
+  
+  if (!searchInput || !searchInput.value.trim()) {
+    showAlert('Please enter a search query', 'warning');
+    return;
+  }
+  
+  const query = searchInput.value.trim();
+  const numResults = parseInt(resultsCountSelect?.value || '10');
+  const timeFilter = parseInt(timeFilterSelect?.value || '30');
+  
+  showLoading(true, 'Performing semantic search...');
+  try {
+    // Call the backend function
+    const results = await eel.search_chroma_documents(query, numResults, timeFilter)();
+    
+    // Store results in state
+    state.semanticSearchResults = results;
+    state.semanticSearchQuery = query;
+    
+    // Render results
+    renderSemanticSearchResults();
+  } catch (error) {
+    showAlert(`Error performing semantic search: ${error}`, 'danger');
+  } finally {
+    showLoading(false);
+  }
+}
+
+// Render semantic search results
+function renderSemanticSearchResults() {
+  const container = document.getElementById('database-papers');
+  if (!container) return;
+  
+  // Clear container
+  container.innerHTML = '';
+  
+  if (!state.semanticSearchResults || state.semanticSearchResults.length === 0) {
+    container.innerHTML = '<div class="alert alert-info">No results found for your query. Try a different search term or time range.</div>';
+    return;
+  }
+  
+  // Add search info
+  const searchInfo = document.createElement('div');
+  searchInfo.className = 'search-info mb-3';
+  searchInfo.innerHTML = `<h3>Semantic Search Results</h3><p>Showing ${state.semanticSearchResults.length} results for: "${state.semanticSearchQuery}"</p>`;
+  container.appendChild(searchInfo);
+  
+  // Create table
+  const table = document.createElement('table');
+  table.className = 'database-table';
+  
+  // Create header
+  const thead = document.createElement('thead');
+  const headerRow = document.createElement('tr');
+  
+  ['Title', 'Abstract', 'Similarity', 'Rating', 'Date Added', 'Actions'].forEach(header => {
+    const th = document.createElement('th');
+    th.textContent = header;
+    headerRow.appendChild(th);
+  });
+  
+  thead.appendChild(headerRow);
+  table.appendChild(thead);
+  
+  // Create body
+  const tbody = document.createElement('tbody');
+  
+  state.semanticSearchResults.forEach(doc => {
+    const row = document.createElement('tr');
+    
+    // Extract title and abstract
+    const parts = doc.document.split('\n');
+    const title = parts[0].replace('Title: ', '');
+    const abstract = parts.length > 1 ? parts.slice(1).join('\n').replace('Abstract: ', '') : '';
+    
+    // Title cell
+    const titleCell = document.createElement('td');
+    titleCell.className = 'title-cell';
+    titleCell.textContent = title;
+    row.appendChild(titleCell);
+    
+    // Abstract cell (truncated)
+    const abstractCell = document.createElement('td');
+    abstractCell.className = 'abstract-cell';
+    const abstractPreview = abstract.length > 100 ? abstract.substring(0, 100) + '...' : abstract;
+    abstractCell.textContent = abstractPreview;
+    
+    // Add expand button if abstract is long
+    if (abstract.length > 100) {
+      const expandBtn = document.createElement('button');
+      expandBtn.className = 'btn-small';
+      expandBtn.textContent = 'Show More';
+      expandBtn.addEventListener('click', () => {
+        if (abstractCell.textContent === abstractPreview) {
+          abstractCell.textContent = abstract;
+          expandBtn.textContent = 'Show Less';
+        } else {
+          abstractCell.textContent = abstractPreview;
+          expandBtn.textContent = 'Show More';
+        }
+      });
+      
+      abstractCell.appendChild(document.createElement('br'));
+      abstractCell.appendChild(expandBtn);
+    }
+    
+    row.appendChild(abstractCell);
+    
+    // Similarity cell
+    const similarityCell = document.createElement('td');
+    similarityCell.className = 'similarity-cell';
+    
+    // Format similarity as percentage
+    const similarityPercent = (doc.similarity * 100).toFixed(1);
+    
+    // Create similarity bar
+    const similarityBar = document.createElement('div');
+    similarityBar.className = 'similarity-bar';
+    similarityBar.style.width = `${similarityPercent}%`;
+    
+    // Create similarity text
+    const similarityText = document.createElement('span');
+    similarityText.textContent = `${similarityPercent}%`;
+    
+    similarityCell.appendChild(similarityBar);
+    similarityCell.appendChild(similarityText);
+    row.appendChild(similarityCell);
+    
+    // Rating cell
+    const ratingCell = document.createElement('td');
+    ratingCell.className = 'rating-cell';
+    ratingCell.textContent = doc.rating || 'N/A';
+    row.appendChild(ratingCell);
+    
+    // Date cell
+    const dateCell = document.createElement('td');
+    dateCell.className = 'date-cell';
+    dateCell.textContent = doc.timestamp_display || 'N/A';
+    row.appendChild(dateCell);
+    
+    // Actions cell
+    const actionsCell = document.createElement('td');
+    actionsCell.className = 'actions-cell';
+    
+    // Link button
+    if (doc.link) {
+      const linkBtn = document.createElement('a');
+      linkBtn.href = doc.link;
+      linkBtn.target = '_blank';
+      linkBtn.className = 'btn-small';
+      linkBtn.textContent = 'View Paper';
+      actionsCell.appendChild(linkBtn);
+    }
+    
+    row.appendChild(actionsCell);
+    
+    tbody.appendChild(row);
+  });
+  
+  table.appendChild(tbody);
+  container.appendChild(table);
+  
+  // Add reset button
+  const resetButton = document.createElement('button');
+  resetButton.className = 'btn mt-3';
+  resetButton.textContent = 'Back to All Documents';
+  resetButton.addEventListener('click', () => {
+    // Clear semantic search results
+    state.semanticSearchResults = null;
+    state.semanticSearchQuery = null;
+    
+    // Reset search input
+    const searchInput = document.getElementById('semantic-search-input');
+    if (searchInput) {
+      searchInput.value = '';
+    }
+    
+    // Reload all documents
+    initializeDatabaseView();
+  });
+  
+  container.appendChild(resetButton);
 }
 
 // Render database documents
@@ -369,6 +567,24 @@ function setupEventListeners() {
   if (refreshDatabase) {
     refreshDatabase.addEventListener('click', () => {
       initializeDatabaseView(); // Reload database data
+    });
+  }
+  
+  // Semantic search button
+  const semanticSearchButton = document.getElementById('semantic-search-button');
+  if (semanticSearchButton) {
+    semanticSearchButton.addEventListener('click', () => {
+      performSemanticSearch();
+    });
+  }
+  
+  // Semantic search input (enter key)
+  const semanticSearchInput = document.getElementById('semantic-search-input');
+  if (semanticSearchInput) {
+    semanticSearchInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        performSemanticSearch();
+      }
     });
   }
   
@@ -921,6 +1137,196 @@ function updateProgress(current, total, description) {
       }, 1000);
     }
   }
+}
+
+// Initialize visualization view
+async function initializeVisualizationView() {
+  // Set up event listeners for visualization controls if not already set up
+  const generateButton = document.getElementById('generate-visualization');
+  if (generateButton && !generateButton.hasEventListener) {
+    generateButton.addEventListener('click', generateVisualization);
+    generateButton.hasEventListener = true;
+  }
+  
+  // Show initial message in the Plotly container
+  const plotlyContainer = document.getElementById('plotly-visualization');
+  if (plotlyContainer) {
+    plotlyContainer.innerHTML = '<div class="text-center p-4">Select visualization options and click "Generate Visualization" to view the Gaussian Process model.</div>';
+  }
+}
+
+// Generate visualization
+async function generateVisualization() {
+  const sampleSize = parseInt(document.getElementById('sample-size').value);
+  
+  // Show loading indicator
+  const loadingElement = document.getElementById('visualization-loading');
+  if (loadingElement) {
+    loadingElement.classList.remove('hidden');
+  }
+  
+  try {
+    // Call the Python function to get visualization data
+    const visualizationData = await eel.get_gp_visualization_data(sampleSize)();
+    
+    // Render the visualization
+    renderVisualization(visualizationData);
+  } catch (error) {
+    showAlert(`Error generating visualization: ${error}`, 'danger');
+  } finally {
+    // Hide loading indicator
+    if (loadingElement) {
+      loadingElement.classList.add('hidden');
+    }
+  }
+}
+
+// Render visualization using Plotly
+function renderVisualization(data) {
+  if (!data || !data.points || data.points.length === 0) {
+    showAlert('No data available for visualization.', 'warning');
+    return;
+  }
+  
+  // Get the Plotly container
+  const plotlyContainer = document.getElementById('plotly-visualization');
+  
+  // Separate data points by category
+  const categories = {};
+  data.points.forEach(point => {
+    const category = point.category || 'Unknown';
+    if (!categories[category]) {
+      categories[category] = {
+        x: [],
+        y: [],
+        size: [],
+        text: []
+      };
+    }
+    categories[category].x.push(point.x);
+    categories[category].y.push(point.y);
+    categories[category].size.push(point.size || 5);
+    categories[category].text.push(point.label || '');
+  });
+  
+  // Create traces for each category
+  const traces = [];
+  
+  // Check if we have GP prediction data
+  const hasGpPredictions = Object.keys(categories).some(cat => cat.includes('GP Prediction'));
+  
+  // If we have GP predictions, create separate traces for data points and prediction curve
+  if (hasGpPredictions) {
+    // Data points trace
+    if (categories['Actual Data']) {
+      const dataPoints = categories['Actual Data'];
+      traces.push({
+        type: 'scatter',
+        mode: 'markers',
+        x: dataPoints.x,
+        y: dataPoints.y,
+        marker: {
+          size: 8,
+          color: '#3498db',
+        },
+        name: 'Actual Data Points',
+        hovertemplate: 'Similarity: %{x:.2f}<br>Rating Difference: %{y:.2f}'
+      });
+    }
+    
+    // GP prediction trace
+    if (categories['GP Prediction']) {
+      const gpPoints = categories['GP Prediction'];
+      
+      // Sort points by x value for proper line drawing
+      const sortedIndices = gpPoints.x.map((x, i) => i).sort((a, b) => gpPoints.x[a] - gpPoints.x[b]);
+      const sortedX = sortedIndices.map(i => gpPoints.x[i]);
+      const sortedY = sortedIndices.map(i => gpPoints.y[i]);
+      const sortedSize = sortedIndices.map(i => gpPoints.size[i]);
+      
+      // Calculate upper and lower bounds for error bands (using size as a proxy for std)
+      const upperBound = sortedY.map((y, i) => y + (sortedSize[i]));
+      const lowerBound = sortedY.map((y, i) => y - (sortedSize[i]));
+      
+      // Add the prediction line
+      traces.push({
+        type: 'scatter',
+        mode: 'lines',
+        x: sortedX,
+        y: sortedY,
+        line: {
+          color: '#e74c3c',
+          width: 2
+        },
+        name: 'GP Prediction',
+        hovertemplate: 'Similarity: %{x:.2f}<br>Predicted Rating Difference: %{y:.2f}'
+      });
+      
+      // Add error bands
+      traces.push({
+        type: 'scatter',
+        mode: 'lines',
+        x: [...sortedX, ...sortedX.slice().reverse()],
+        y: [...upperBound, ...lowerBound.slice().reverse()],
+        fill: 'toself',
+        fillcolor: 'rgba(231, 76, 60, 0.2)',
+        line: { color: 'transparent' },
+        name: 'Uncertainty (±1σ)',
+        showlegend: true,
+        hoverinfo: 'skip'
+      });
+    }
+  } else {
+    // If no GP predictions, just create a trace for each category
+    Object.entries(categories).forEach(([category, points]) => {
+      const color = category === 'Actual Data' ? '#3498db' : 
+                    category === 'Data Point' ? '#3498db' : 
+                    category.includes('Low') ? '#e74c3c' : 
+                    category.includes('Moderate') ? '#f39c12' : 
+                    category.includes('High') ? '#2ecc71' : 
+                    '#999999';
+      
+      traces.push({
+        type: 'scatter',
+        mode: 'markers',
+        x: points.x,
+        y: points.y,
+        marker: {
+          size: points.size,
+          color: color
+        },
+        name: category,
+        text: points.text,
+        hovertemplate: '%{text}<br>X: %{x:.2f}<br>Y: %{y:.2f}'
+      });
+    });
+  }
+  
+  // Create layout
+  const layout = {
+    title: data.title || 'Gaussian Process Visualization',
+    xaxis: {
+      title: data.xLabel || 'Similarity Score',
+      zeroline: true,
+      gridcolor: '#eee'
+    },
+    yaxis: {
+      title: data.yLabel || 'Rating Difference',
+      zeroline: true,
+      gridcolor: '#eee'
+    },
+    hovermode: 'closest',
+    margin: { l: 60, r: 30, t: 50, b: 60 },
+    legend: {
+      orientation: 'h',
+      y: -0.2
+    },
+    plot_bgcolor: '#fff',
+    paper_bgcolor: '#fff'
+  };
+  
+  // Create the plot
+  Plotly.newPlot(plotlyContainer, traces, layout, { responsive: true });
 }
 
 // Expose functions to Python

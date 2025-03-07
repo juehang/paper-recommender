@@ -10,7 +10,7 @@ from .recommender import create_recommender, bootstrap_recommender as bootstrap_
 from .data_sources import ArXivDataSource
 from .embeddings import create_embedding_model
 from .vector_store import ChromaVectorStore
-from .common import ProgressTracker
+from .common import ProgressTracker, cosine_similarity
 
 # Initialize global variables
 config = None
@@ -338,30 +338,16 @@ def get_chroma_documents(time_filter=30) -> List[Dict[str, Any]]:
     if vector_store is None:
         init_components()
     
-    # Get all documents
-    all_docs = vector_store.get_all_documents()
-    
-    # Calculate cutoff timestamp for filtering (if applicable)
-    cutoff_timestamp = 0
-    if time_filter > 0:
-        import time
-        from datetime import datetime, timedelta
-        # Calculate timestamp for X days ago
-        cutoff_date = datetime.now() - timedelta(days=time_filter)
-        cutoff_timestamp = cutoff_date.timestamp()
+    # Get documents filtered by time directly from the database
+    filtered_docs = vector_store.get_documents_by_time(days=time_filter)
     
     # Convert to a more user-friendly format
     result = []
     for i, (doc_id, document, metadata) in enumerate(zip(
-        all_docs["ids"], 
-        all_docs["documents"], 
-        all_docs["metadatas"]
+        filtered_docs["ids"], 
+        filtered_docs["documents"], 
+        filtered_docs["metadatas"]
     )):
-        # Skip documents older than the cutoff if filtering is enabled
-        doc_timestamp = metadata.get("timestamp", 0)
-        if time_filter > 0 and doc_timestamp < cutoff_timestamp:
-            continue
-            
         # Format timestamp as human-readable if it exists
         timestamp_display = "N/A"
         if "timestamp" in metadata:
@@ -383,6 +369,221 @@ def get_chroma_documents(time_filter=30) -> List[Dict[str, Any]]:
         })
     
     return result
+
+@eel.expose
+def search_chroma_documents(query_text: str, num_results: int = 10, time_filter: int = 30) -> List[Dict[str, Any]]:
+    """
+    Perform semantic search on documents in the ChromaDB vector store.
+    
+    Args:
+        query_text (str): The search query text
+        num_results (int): Maximum number of results to return
+        time_filter (int): Number of days to filter by (0 for all documents)
+        
+    Returns:
+        list: A list of documents with their metadata and similarity scores
+    """
+    global vector_store, embedding_model
+    if vector_store is None or embedding_model is None:
+        init_components()
+    
+    # Perform semantic search with time filtering at the database level
+    results = vector_store.search_by_time([query_text], num_results=num_results, days=time_filter)
+    
+    # Process results
+    processed_results = []
+    
+    if "distances" in results and results["distances"]:
+        # Get all documents to retrieve the full document text
+        all_docs = vector_store.get_all_documents()
+        
+        for i, (distance, metadata) in enumerate(zip(results["distances"][0], results["metadatas"][0])):
+            # Format timestamp as human-readable if it exists
+            timestamp_display = "N/A"
+            if "timestamp" in metadata:
+                try:
+                    # Convert Unix timestamp to readable format
+                    from datetime import datetime
+                    timestamp = metadata["timestamp"]
+                    timestamp_display = datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S')
+                except:
+                    timestamp_display = str(metadata["timestamp"])
+            
+            # Get the document text
+            # Note: We need to retrieve the document text since it's not included in search results
+            doc_index = -1
+            for j, doc_id in enumerate(all_docs["ids"]):
+                if doc_id == results["ids"][0][i]:
+                    doc_index = j
+                    break
+            
+            document = all_docs["documents"][doc_index] if doc_index >= 0 else "Document text not available"
+            
+            # Calculate similarity score (1 - distance)
+            similarity = 1 - distance
+            
+            processed_results.append({
+                "id": results["ids"][0][i],
+                "document": document,
+                "link": metadata.get("link", ""),
+                "rating": metadata.get("rating", 0),
+                "timestamp": metadata.get("timestamp", None),
+                "timestamp_display": timestamp_display,
+                "similarity": similarity
+            })
+    
+    return processed_results
+
+@eel.expose
+def get_gp_visualization_data(sample_size: int = 30) -> Dict[str, Any]:
+    """
+    Get data for Gaussian Process visualization.
+    
+    Args:
+        sample_size (int): Number of random papers to include in visualization
+        
+    Returns:
+        dict: Visualization data including points, labels, and metadata
+    """
+    global recommender, vector_store
+    if recommender is None or vector_store is None:
+        init_components()
+    
+    # Ensure the recommender is bootstrapped
+    if recommender.model is None:
+        recommender.bootstrap()
+    
+    # Get all documents from the vector store
+    all_docs = vector_store.get_all_documents()
+    
+    # Check if we have any documents
+    if len(all_docs["ids"]) == 0:
+        return {"points": [], "title": "No data available"}
+    
+    # Select a random sample of documents
+    import numpy as np
+    sample_size = min(sample_size, len(all_docs["ids"]))
+    sample_indices = np.random.choice(len(all_docs["ids"]), sample_size, replace=False)
+    
+    # Prepare data for visualization
+    doc_ids = [all_docs["ids"][i] for i in sample_indices]
+    documents = [all_docs["documents"][i] for i in sample_indices]
+    metadatas = [all_docs["metadatas"][i] for i in sample_indices]
+    embeddings = [all_docs["embeddings"][i] for i in sample_indices]
+    
+    # Extract ratings and titles
+    ratings = []
+    titles = []
+    for document, metadata in zip(documents, metadatas):
+        # Get rating (default to 0 if not rated)
+        rating = metadata.get("rating", 0)
+        ratings.append(rating)
+        
+        # Extract title from document (first line)
+        title = document.split('\n')[0][:50]
+        titles.append(title)
+    
+    # Compute similarity matrix between documents
+    similarity_matrix = np.zeros((sample_size, sample_size))
+    for i in range(sample_size):
+        # Get embedding for document i
+        embedding_i = embeddings[i]
+        if embedding_i is None:
+            continue
+            
+        for j in range(i+1, sample_size):
+            # Get embedding for document j
+            embedding_j = embeddings[j]
+            if embedding_j is None:
+                continue
+                
+            # Compute cosine similarity
+            similarity = cosine_similarity(embedding_i, embedding_j)
+            similarity_matrix[i, j] = similarity
+            similarity_matrix[j, i] = similarity
+    
+    # Prepare data for GP model
+    X = []  # Similarity scores
+    y = []  # Rating variances
+    
+    for i in range(sample_size):
+        for j in range(i+1, sample_size):
+            similarity = similarity_matrix[i, j]
+            rating_diff = (ratings[i] - ratings[j])**2
+            
+            X.append([similarity])
+            y.append(rating_diff)
+    
+    # Check if we have enough data points
+    if len(X) < 10:
+        return {"points": [], "title": "Not enough data points for visualization"}
+    
+    # Convert to numpy arrays
+    X = np.array(X)
+    y = np.array(y)
+    
+    # Get predictions from GP model
+    if recommender.model is not None:
+        # Generate a range of similarity values for prediction
+        sim_range = np.linspace(0, 1, 100).reshape(-1, 1)
+        
+        # Get predictions
+        mean_predictions, std_predictions = recommender.model.predict(sim_range, return_std=True)
+        
+        # Prepare points for visualization
+        points = []
+        
+        # Add actual data points
+        for i, (similarity, rating_diff) in enumerate(zip(X, y)):
+            points.append({
+                "x": float(similarity[0]),
+                "y": float(rating_diff),
+                "size": 5,
+                "color": "#3498db",  # Blue for actual data
+                "category": "Actual Data",
+                "label": None
+            })
+        
+        # Add prediction curve
+        for i, (sim, pred, std) in enumerate(zip(sim_range, mean_predictions, std_predictions)):
+            # Only add every few points to avoid overcrowding
+            if i % 5 == 0:
+                points.append({
+                    "x": float(sim[0]),
+                    "y": float(pred),
+                    "size": float(std),  # Size based on uncertainty
+                    "color": "#e74c3c",  # Red for predictions
+                    "category": "GP Prediction",
+                    "label": None
+                })
+        
+        # Return visualization data
+        return {
+            "points": points,
+            "title": "Gaussian Process Model: Rating Difference vs. Similarity",
+            "xLabel": "Similarity Score",
+            "yLabel": "Rating Difference"
+        }
+    else:
+        # If no model is available, just return the raw data
+        points = []
+        
+        for i, (similarity, rating_diff) in enumerate(zip(X, y)):
+            points.append({
+                "x": float(similarity[0]),
+                "y": float(rating_diff),
+                "size": 5,
+                "color": "#3498db",
+                "category": "Data Point",
+                "label": None
+            })
+        
+        return {
+            "points": points,
+            "title": "Rating Difference vs. Similarity (No GP Model)",
+            "xLabel": "Similarity Score",
+            "yLabel": "Rating Difference"
+        }
 
 # Start the Eel app
 def start_app(web_dir=None, mode="chrome-app", host="localhost", port=8000, block=True):

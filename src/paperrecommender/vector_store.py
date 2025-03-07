@@ -55,20 +55,47 @@ class ChromaVectorStore(VectorStore):
             )
         return None
     
-    def search(self, query_texts, num_results=10):
+    def search(self, query_texts, num_results=10, where_filter=None):
         """
         Searches for a query in the vector store.
         Args:
            query_texts (list): A list of queries to search for.
-           Returns:
-           list: A list of results.
+           num_results (int): Number of results to return.
+           where_filter (dict, optional): Filter to apply to the query.
+           
+        Returns:
+           dict: A dictionary containing search results.
         """
         results = self.collection.query(
             query_texts=query_texts,
             n_results=num_results,
+            where=where_filter,
             include=["metadatas", "distances"],
             )
         return results
+        
+    def search_by_time(self, query_texts, num_results=10, days=0):
+        """
+        Searches for a query in the vector store with time filtering.
+        
+        Args:
+           query_texts (list): A list of queries to search for.
+           num_results (int): Number of results to return.
+           days (int): Number of days to look back (0 for all documents).
+           
+        Returns:
+           dict: A dictionary containing search results.
+        """
+        where_filter = None
+        if days > 0:
+            import time
+            from datetime import datetime, timedelta
+            # Calculate timestamp for X days ago
+            cutoff_date = datetime.now() - timedelta(days=days)
+            cutoff_timestamp = cutoff_date.timestamp()
+            where_filter = {"timestamp": {"$gte": cutoff_timestamp}}
+        
+        return self.search(query_texts, num_results, where_filter)
         
     def get_all_documents(self):
         """
@@ -78,6 +105,30 @@ class ChromaVectorStore(VectorStore):
             dict: A dictionary containing all documents, their IDs, embeddings, and metadata
         """
         return self.collection.get(
+            include=["embeddings", "metadatas", "documents"]
+        )
+        
+    def get_documents_by_time(self, days=0):
+        """
+        Retrieve documents from the collection filtered by time.
+        
+        Args:
+            days (int): Number of days to look back (0 for all documents)
+            
+        Returns:
+            dict: A dictionary containing filtered documents, their IDs, embeddings, and metadata
+        """
+        where_filter = None
+        if days > 0:
+            import time
+            from datetime import datetime, timedelta
+            # Calculate timestamp for X days ago
+            cutoff_date = datetime.now() - timedelta(days=days)
+            cutoff_timestamp = cutoff_date.timestamp()
+            where_filter = {"timestamp": {"$gte": cutoff_timestamp}}
+        
+        return self.collection.get(
+            where=where_filter,
             include=["embeddings", "metadatas", "documents"]
         )
         

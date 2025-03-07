@@ -159,7 +159,7 @@ class GaussianRegressionRecommender(Recommender):
         kernel = RBF(length_scale=1.0, length_scale_bounds=(1e-3, 1e1)) + WhiteKernel(noise_level=1.0, noise_level_bounds=(1e-5, 20.))
         
         # Create and fit the model
-        self.model = GaussianProcessRegressor(kernel=kernel, n_restarts_optimizer=9)
+        self.model = GaussianProcessRegressor(kernel=kernel, n_restarts_optimizer=9, normalize_y=True)
         self.model.fit(X, y)
         
         # Save the model
