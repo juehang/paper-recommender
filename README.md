@@ -94,6 +94,53 @@ Key configuration parameters:
 
 Paper Recommender offers two interfaces: a command-line interface (CLI) for terminal users and a graphical user interface (GUI) for those who prefer a more visual experience.
 
+### Graphical User Interface
+
+Paper Recommender also provides a web-based graphical interface for a more interactive experience.
+
+#### Launching the GUI
+
+To start the graphical interface:
+
+```bash
+paper-recommender-ui
+```
+
+By default, this will open a Chrome window with the Paper Recommender interface. If Chrome is not available, it will fall back to your default browser.
+
+#### GUI Options
+
+The GUI application accepts several command-line options to customize its behavior:
+
+```
+usage: paper-recommender-ui [-h] [--mode {chrome,electron,browser,default}] [--host HOST] [--port PORT] [--no-block]
+
+Paper Recommender UI
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --mode {chrome,electron,browser,default}
+                        Mode to start Eel in (default: chrome)
+  --host HOST           Host to bind to (default: localhost)
+  --port PORT           Port to bind to (default: 8000)
+  --no-block            Don't block the main thread
+```
+
+#### GUI Features
+
+The graphical interface provides all the functionality of the command-line version with a more user-friendly experience:
+
+1. **Onboarding**: Rate papers through an intuitive interface to help the system learn your preferences
+2. **Recommendations**: View and rate recommended papers with a clean, visual layout
+3. **Search**: Search through your paper library using semantic search
+4. **Visualization**: View visualizations of the recommendation model to understand how it works
+5. **Configuration**: Easily adjust system settings through a configuration panel
+
+The GUI also provides additional features not available in the CLI version:
+- Adding custom papers manually
+- Viewing your paper library with filtering options
+- Interactive data visualizations of the Gaussian Process model
+
 ### Command-line Interface
 
 #### First-time Use
@@ -189,53 +236,6 @@ optional arguments:
   --num-recommendations NUM_RECOMMENDATIONS
                         Number of recommendations to show
 ```
-
-### Graphical User Interface
-
-Paper Recommender also provides a web-based graphical interface for a more interactive experience.
-
-#### Launching the GUI
-
-To start the graphical interface:
-
-```bash
-paper-recommender-ui
-```
-
-By default, this will open a Chrome window with the Paper Recommender interface. If Chrome is not available, it will fall back to your default browser.
-
-#### GUI Options
-
-The GUI application accepts several command-line options to customize its behavior:
-
-```
-usage: paper-recommender-ui [-h] [--mode {chrome,electron,browser,default}] [--host HOST] [--port PORT] [--no-block]
-
-Paper Recommender UI
-
-optional arguments:
-  -h, --help            show this help message and exit
-  --mode {chrome,electron,browser,default}
-                        Mode to start Eel in (default: chrome)
-  --host HOST           Host to bind to (default: localhost)
-  --port PORT           Port to bind to (default: 8000)
-  --no-block            Don't block the main thread
-```
-
-#### GUI Features
-
-The graphical interface provides all the functionality of the command-line version with a more user-friendly experience:
-
-1. **Onboarding**: Rate papers through an intuitive interface to help the system learn your preferences
-2. **Recommendations**: View and rate recommended papers with a clean, visual layout
-3. **Search**: Search through your paper library using semantic search
-4. **Visualization**: View visualizations of the recommendation model to understand how it works
-5. **Configuration**: Easily adjust system settings through a configuration panel
-
-The GUI also provides additional features not available in the CLI version:
-- Adding custom papers manually
-- Viewing your paper library with filtering options
-- Interactive data visualizations of the Gaussian Process model
 
 ## How It Works
 
