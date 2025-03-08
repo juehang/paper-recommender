@@ -1,6 +1,6 @@
 # Paper Recommender
 
-A research paper recommendation engine that uses text embeddings and Gaussian Process Regression (GPR) to suggest relevant papers based on your preferences.
+A research paper recommendation engine that uses text embeddings and Gaussian Process Regression (GPR) to suggest relevant papers based on your preferences. I find that it takes ~50 papers in the database before the recommendation algorithm works well.
 
 ## Overview
 
