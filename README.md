@@ -92,7 +92,11 @@ Key configuration parameters:
 
 ## Usage
 
-### First-time Use
+Paper Recommender offers two interfaces: a command-line interface (CLI) for terminal users and a graphical user interface (GUI) for those who prefer a more visual experience.
+
+### Command-line Interface
+
+#### First-time Use
 
 On first run, the system will automatically start the onboarding process:
 
@@ -100,7 +104,7 @@ On first run, the system will automatically start the onboarding process:
 paper-recommender
 ```
 
-### Onboarding
+#### Onboarding
 
 The onboarding process helps the system learn your preferences by asking you to rate papers:
 
@@ -113,7 +117,7 @@ During onboarding:
 2. Rate papers on a scale of 1-5
 3. The system will use these ratings to build a recommendation model
 
-### Getting Recommendations
+#### Getting Recommendations
 
 After onboarding, you can get paper recommendations:
 
@@ -127,7 +131,7 @@ The recommendation process:
 3. Presents papers with the highest predicted ratings
 4. Allows you to rate the recommended papers to improve future recommendations
 
-### Bootstrapping the Model
+#### Bootstrapping the Model
 
 If you want to retrain the recommendation model with your latest ratings:
 
@@ -135,7 +139,7 @@ If you want to retrain the recommendation model with your latest ratings:
 paper-recommender --bootstrap
 ```
 
-### Command-line Options
+#### Command-line Options
 
 ```
 usage: paper-recommender [-h] [--onboard] [--recommend] [--bootstrap]
@@ -185,6 +189,53 @@ optional arguments:
   --num-recommendations NUM_RECOMMENDATIONS
                         Number of recommendations to show
 ```
+
+### Graphical User Interface
+
+Paper Recommender also provides a web-based graphical interface for a more interactive experience.
+
+#### Launching the GUI
+
+To start the graphical interface:
+
+```bash
+paper-recommender-ui
+```
+
+By default, this will open a Chrome window with the Paper Recommender interface. If Chrome is not available, it will fall back to your default browser.
+
+#### GUI Options
+
+The GUI application accepts several command-line options to customize its behavior:
+
+```
+usage: paper-recommender-ui [-h] [--mode {chrome,electron,browser,default}] [--host HOST] [--port PORT] [--no-block]
+
+Paper Recommender UI
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --mode {chrome,electron,browser,default}
+                        Mode to start Eel in (default: chrome)
+  --host HOST           Host to bind to (default: localhost)
+  --port PORT           Port to bind to (default: 8000)
+  --no-block            Don't block the main thread
+```
+
+#### GUI Features
+
+The graphical interface provides all the functionality of the command-line version with a more user-friendly experience:
+
+1. **Onboarding**: Rate papers through an intuitive interface to help the system learn your preferences
+2. **Recommendations**: View and rate recommended papers with a clean, visual layout
+3. **Search**: Search through your paper library using semantic search
+4. **Visualization**: View visualizations of the recommendation model to understand how it works
+5. **Configuration**: Easily adjust system settings through a configuration panel
+
+The GUI also provides additional features not available in the CLI version:
+- Adding custom papers manually
+- Viewing your paper library with filtering options
+- Interactive data visualizations of the Gaussian Process model
 
 ## How It Works
 
