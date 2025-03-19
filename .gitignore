@@ -2,3 +2,4 @@
 *.egg-info
 src/paperrecommender/__pycache__
 memory_bank.md
+UI_MODERNIZATION_PLAN.md

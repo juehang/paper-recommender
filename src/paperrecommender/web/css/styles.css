@@ -26,7 +26,7 @@ body {
   line-height: 1.6;
   color: var(--text-color);
   background-color: var(--light-color);
-  padding: 0;
+  padding: 50px 0 60px 0; /* Top padding for nav, bottom padding for footer */
   margin: 0;
 }
 
@@ -53,6 +53,11 @@ header h1 {
 nav {
   background-color: var(--dark-color);
   padding: 0.5rem 1rem;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  z-index: 1000;
 }
 
 nav ul {
@@ -408,6 +413,10 @@ textarea {
 
 /* Responsive */
 @media (max-width: 768px) {
+  body {
+    padding-top: 120px;  /* More space for nav on small screens */
+  }
+
   nav ul {
     flex-direction: column;
   }
@@ -439,7 +448,11 @@ footer {
   color: white;
   text-align: center;
   padding: 1rem;
-  margin-top: 2rem;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  z-index: 1000;
 }
 
 /* Form row layout */

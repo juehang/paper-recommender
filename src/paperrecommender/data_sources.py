@@ -42,12 +42,13 @@ class ArXivDataSource(DataSource):
         start_date_str = (current_date - datetime.timedelta(hours=self.period)).strftime("%Y%m%d%H%M")
         end_date_str = current_date.strftime("%Y%m%d%H%M")
         query_params = {
-            "search_query": f"submittedDate:[{start_date_str} TO {end_date_str}]",
+            "search_query": f"submittedDate:[{start_date_str}+TO+{end_date_str}]",
             "max_results": 2000,
             "sortBy": "lastUpdatedDate",
             "sortOrder": "descending"
         }
         query_url = self.base_url + "&".join([f"{key}={value}" for key, value in query_params.items()])
+        print(f'Sending query: {query_url}')
         req = requests.get(query_url)
         parsed_data = feedparser.parse(req.text)
         titles = []
