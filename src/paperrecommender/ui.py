@@ -43,7 +43,17 @@ class UiProgressTracker(ProgressTracker):
     
     def update_ui(self):
         try:
+            percentage = (self.current / self.total * 100) if self.total > 0 else 0
+            # Call updateProgress instead of show_progress to update the progress bar
             eel.updateProgress(self.current, self.total, self.description)
+            
+            # Also call show_progress for compatibility with other UI elements
+            eel.show_progress(
+                message=self.description,
+                percentage=percentage,
+                state='loading',
+                operationId='progress-update'
+            )
         except Exception:
             # Ignore errors if Eel is not initialized yet
             pass
@@ -338,37 +348,59 @@ def get_chroma_documents(time_filter=30) -> List[Dict[str, Any]]:
     if vector_store is None:
         init_components()
     
-    # Get documents filtered by time directly from the database
-    filtered_docs = vector_store.get_documents_by_time(days=time_filter)
+    # Create a progress tracker for database operations
+    progress_tracker = UiProgressTracker(total=100, description="Loading database entries")
+    progress_tracker.update_to(10)  # Show initial progress
     
-    # Convert to a more user-friendly format
-    result = []
-    for i, (doc_id, document, metadata) in enumerate(zip(
-        filtered_docs["ids"], 
-        filtered_docs["documents"], 
-        filtered_docs["metadatas"]
-    )):
-        # Format timestamp as human-readable if it exists
-        timestamp_display = "N/A"
-        if "timestamp" in metadata:
-            try:
-                # Convert Unix timestamp to readable format
-                from datetime import datetime
-                timestamp = metadata["timestamp"]
-                timestamp_display = datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S')
-            except:
-                timestamp_display = str(metadata["timestamp"])
+    try:
+        # Get documents filtered by time directly from the database
+        progress_tracker.update_to(30)
+        filtered_docs = vector_store.get_documents_by_time(days=time_filter)
+        progress_tracker.update_to(50)
         
-        result.append({
-            "id": doc_id,
-            "document": document,
-            "link": metadata.get("link", ""),
-            "rating": metadata.get("rating", 0),
-            "timestamp": metadata.get("timestamp", None),
-            "timestamp_display": timestamp_display
-        })
-    
-    return result
+        # Convert to a more user-friendly format
+        result = []
+        total_docs = len(filtered_docs["ids"])
+        
+        # Update progress tracker with the actual number of documents
+        progress_tracker.reset(total=total_docs + 50, description="Processing database entries")
+        progress_tracker.update_to(50)  # Start at 50% after fetching data
+        
+        for i, (doc_id, document, metadata) in enumerate(zip(
+            filtered_docs["ids"],
+            filtered_docs["documents"],
+            filtered_docs["metadatas"]
+        )):
+            # Format timestamp as human-readable if it exists
+            timestamp_display = "N/A"
+            if "timestamp" in metadata:
+                try:
+                    # Convert Unix timestamp to readable format
+                    from datetime import datetime
+                    timestamp = metadata["timestamp"]
+                    timestamp_display = datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S')
+                except:
+                    timestamp_display = str(metadata["timestamp"])
+            
+            result.append({
+                "id": doc_id,
+                "document": document,
+                "link": metadata.get("link", ""),
+                "rating": metadata.get("rating", 0),
+                "timestamp": metadata.get("timestamp", None),
+                "timestamp_display": timestamp_display
+            })
+            
+            # Update progress every few documents to avoid too many updates
+            if i % max(1, total_docs // 10) == 0:
+                progress_tracker.update_to(50 + int((i / total_docs) * 50))
+        
+        # Complete the progress
+        progress_tracker.update_to(progress_tracker.total)
+        return result
+    finally:
+        # Ensure progress tracker is closed even if an exception occurs
+        progress_tracker.close()
 
 @eel.expose
 def search_chroma_documents(query_text: str, num_results: int = 10, time_filter: int = 30) -> List[Dict[str, Any]]:
@@ -387,52 +419,74 @@ def search_chroma_documents(query_text: str, num_results: int = 10, time_filter:
     if vector_store is None or embedding_model is None:
         init_components()
     
-    # Perform semantic search with time filtering at the database level
-    results = vector_store.search_by_time([query_text], num_results=num_results, days=time_filter)
+    # Create a progress tracker for semantic search
+    progress_tracker = UiProgressTracker(total=100, description="Performing semantic search")
+    progress_tracker.update_to(10)  # Show initial progress
     
-    # Process results
-    processed_results = []
-    
-    if "distances" in results and results["distances"]:
-        # Get all documents to retrieve the full document text
-        all_docs = vector_store.get_all_documents()
+    try:
+        # Perform semantic search with time filtering at the database level
+        progress_tracker.update_to(30)
+        results = vector_store.search_by_time([query_text], num_results=num_results, days=time_filter)
+        progress_tracker.update_to(50)
         
-        for i, (distance, metadata) in enumerate(zip(results["distances"][0], results["metadatas"][0])):
-            # Format timestamp as human-readable if it exists
-            timestamp_display = "N/A"
-            if "timestamp" in metadata:
-                try:
-                    # Convert Unix timestamp to readable format
-                    from datetime import datetime
-                    timestamp = metadata["timestamp"]
-                    timestamp_display = datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S')
-                except:
-                    timestamp_display = str(metadata["timestamp"])
+        # Process results
+        processed_results = []
+        
+        if "distances" in results and results["distances"]:
+            # Get all documents to retrieve the full document text
+            progress_tracker.update_to(60)
+            all_docs = vector_store.get_all_documents()
+            progress_tracker.update_to(70)
             
-            # Get the document text
-            # Note: We need to retrieve the document text since it's not included in search results
-            doc_index = -1
-            for j, doc_id in enumerate(all_docs["ids"]):
-                if doc_id == results["ids"][0][i]:
-                    doc_index = j
-                    break
+            # Update progress tracker with the actual number of results
+            total_results = len(results["distances"][0])
+            progress_tracker.reset(total=total_results + 70, description="Processing search results")
+            progress_tracker.update_to(70)  # Start at 70% after fetching data
             
-            document = all_docs["documents"][doc_index] if doc_index >= 0 else "Document text not available"
-            
-            # Calculate similarity score (1 - distance)
-            similarity = 1 - distance
-            
-            processed_results.append({
-                "id": results["ids"][0][i],
-                "document": document,
-                "link": metadata.get("link", ""),
-                "rating": metadata.get("rating", 0),
-                "timestamp": metadata.get("timestamp", None),
-                "timestamp_display": timestamp_display,
-                "similarity": similarity
-            })
-    
-    return processed_results
+            for i, (distance, metadata) in enumerate(zip(results["distances"][0], results["metadatas"][0])):
+                # Format timestamp as human-readable if it exists
+                timestamp_display = "N/A"
+                if "timestamp" in metadata:
+                    try:
+                        # Convert Unix timestamp to readable format
+                        from datetime import datetime
+                        timestamp = metadata["timestamp"]
+                        timestamp_display = datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S')
+                    except:
+                        timestamp_display = str(metadata["timestamp"])
+                
+                # Get the document text
+                # Note: We need to retrieve the document text since it's not included in search results
+                doc_index = -1
+                for j, doc_id in enumerate(all_docs["ids"]):
+                    if doc_id == results["ids"][0][i]:
+                        doc_index = j
+                        break
+                
+                document = all_docs["documents"][doc_index] if doc_index >= 0 else "Document text not available"
+                
+                # Calculate similarity score (1 - distance)
+                similarity = 1 - distance
+                
+                processed_results.append({
+                    "id": results["ids"][0][i],
+                    "document": document,
+                    "link": metadata.get("link", ""),
+                    "rating": metadata.get("rating", 0),
+                    "timestamp": metadata.get("timestamp", None),
+                    "timestamp_display": timestamp_display,
+                    "similarity": similarity
+                })
+                
+                # Update progress
+                progress_tracker.update_to(70 + int((i / total_results) * 30))
+        
+        # Complete the progress
+        progress_tracker.update_to(progress_tracker.total)
+        return processed_results
+    finally:
+        # Ensure progress tracker is closed even if an exception occurs
+        progress_tracker.close()
 
 @eel.expose
 def get_gp_visualization_data(sample_size: int = 30) -> Dict[str, Any]:

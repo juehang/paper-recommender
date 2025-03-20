@@ -1,5 +1,111 @@
 // Paper Recommender UI JavaScript
 
+// Progress Tracker Class - Added for UI Modernization
+class ProgressTracker {
+  constructor() {
+    this.footer = document.getElementById('progress-footer');
+    this.icon = document.getElementById('progress-icon');
+    this.text = document.getElementById('progress-text');
+    this.progressBar = document.getElementById('progress-bar');
+    this._timeoutId = null;
+    this._activeOperations = new Set();
+  }
+
+  /**
+   * Show progress indicator with message and percentage
+   * @param {string} message - Progress message to display
+   * @param {number} percentage - Progress percentage (0-100)
+   * @param {string} state - State ('loading', 'complete', 'error')
+   * @param {string} operationId - Optional unique ID for operation
+   * @param {number} timeout - Optional auto-hide timeout in ms
+   */
+  show(message, percentage = 0, state = 'loading', operationId = null, timeout = 0) {
+    this.footer.classList.remove('hidden');
+    this.text.textContent = message;
+    this.progressBar.style.width = `${percentage}%`;
+    this.updateIcon(state);
+    
+    // Track operation if ID provided
+    if (operationId) {
+      this._activeOperations.add(operationId);
+    }
+    
+    // Set auto-hide timeout if provided
+    if (timeout > 0) {
+      if (this._timeoutId) {
+        clearTimeout(this._timeoutId);
+      }
+      
+      this._timeoutId = setTimeout(() => {
+        this.hide(operationId);
+      }, timeout);
+    }
+  }
+
+  /**
+   * Hide progress indicator
+   * @param {string} operationId - Optional operation ID to complete
+   */
+  hide(operationId = null) {
+    // If operation ID provided, remove from active operations
+    if (operationId) {
+      this._activeOperations.delete(operationId);
+      
+      // Don't hide if other operations are still active
+      if (this._activeOperations.size > 0) {
+        return;
+      }
+    }
+    
+    // Clear any pending timeout
+    if (this._timeoutId) {
+      clearTimeout(this._timeoutId);
+      this._timeoutId = null;
+    }
+    
+    this.footer.classList.add('hidden');
+  }
+
+  /**
+   * Update progress icon based on state
+   * @param {string} state - The current state
+   */
+  updateIcon(state) {
+    // Use SVG icons for better styling and consistency
+    const icons = {
+      'loading': `
+        <svg class="animate-spin w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+      `,
+      'complete': `
+        <svg class="w-5 h-5 text-green-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+          <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+        </svg>
+      `,
+      'error': `
+        <svg class="w-5 h-5 text-red-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+          <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+        </svg>
+      `
+    };
+    
+    this.icon.innerHTML = icons[state] || icons['loading'];
+  }
+
+  /**
+   * Get singleton instance of ProgressTracker
+   * @returns {ProgressTracker} The singleton instance
+   */
+  static getInstance() {
+    if (!this.instance) {
+      this.instance = new ProgressTracker();
+    }
+    return this.instance;
+  }
+}
+
 // Global state
 const state = {
   currentView: 'home',
@@ -918,8 +1024,11 @@ async function bootstrapRecommender() {
 
 // Initialize recommendations view
 async function initializeRecommendationsView() {
+  // Show loading indicator
+  showLoading(true, 'Generating recommendations...');
+  
   try {
-    // Get recommendations - progress will be shown via the progress bar
+    // Get recommendations
     const recommendations = await eel.get_recommendations(
       state.config.num_recommendations,
       state.config.exploration_weight,
@@ -938,6 +1047,9 @@ async function initializeRecommendationsView() {
     renderRecommendations();
   } catch (error) {
     showAlert(`Error generating recommendations: ${error}`, 'danger');
+  } finally {
+    // Always hide loading indicator
+    showLoading(false);
   }
 }
 
@@ -1064,55 +1176,17 @@ async function saveConfig() {
   }
 }
 
-// Show loading indicator
+// Show loading indicator - Updated to use ProgressTracker
 function showLoading(isLoading, description = '') {
   state.isLoading = isLoading;
   
+  // Use the new ProgressTracker for loading indication
+  const progress = ProgressTracker.getInstance();
+  
   if (isLoading) {
-    // Create loading overlay if it doesn't exist
-    let loadingOverlay = document.getElementById('loading-overlay');
-    
-    if (!loadingOverlay) {
-      loadingOverlay = document.createElement('div');
-      loadingOverlay.id = 'loading-overlay';
-      loadingOverlay.style.position = 'fixed';
-      loadingOverlay.style.top = '0';
-      loadingOverlay.style.left = '0';
-      loadingOverlay.style.width = '100%';
-      loadingOverlay.style.height = '100%';
-      loadingOverlay.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
-      loadingOverlay.style.display = 'flex';
-      loadingOverlay.style.flexDirection = 'column';
-      loadingOverlay.style.justifyContent = 'center';
-      loadingOverlay.style.alignItems = 'center';
-      loadingOverlay.style.zIndex = '1000';
-      
-      const spinner = document.createElement('div');
-      spinner.className = 'spinner';
-      
-      const loadingText = document.createElement('div');
-      loadingText.id = 'loading-text';
-      loadingText.style.color = 'white';
-      loadingText.style.marginTop = '1rem';
-      loadingText.style.fontWeight = 'bold';
-      
-      loadingOverlay.appendChild(spinner);
-      loadingOverlay.appendChild(loadingText);
-      document.body.appendChild(loadingOverlay);
-    }
-    
-    // Set loading text
-    const loadingText = document.getElementById('loading-text');
-    if (loadingText) {
-      loadingText.textContent = description;
-    }
+    progress.show(description, 0, 'loading', 'global-loading');
   } else {
-    // Remove loading overlay
-    const loadingOverlay = document.getElementById('loading-overlay');
-    if (loadingOverlay) {
-      loadingOverlay.remove();
-      console.log("Loading overlay removed from DOM");
-    }
+    progress.hide('global-loading');
   }
 }
 
@@ -1143,25 +1217,23 @@ function showAlert(message, type = 'info') {
   }, 5000);
 }
 
-// Update progress bar
+// Update progress bar - Updated to use ProgressTracker
 function updateProgress(current, total, description) {
   state.progressValue = current;
   state.progressTotal = total;
   state.progressDescription = description;
   
-  const progressBar = document.getElementById('progress-bar');
-  const progressText = document.getElementById('progress-text');
+  // Use the new ProgressTracker for progress indication
+  const progress = ProgressTracker.getInstance();
   
-  if (progressBar && progressText) {
-    const percentage = total > 0 ? (current / total) * 100 : 0;
-    progressBar.style.width = `${percentage}%`;
-    progressText.textContent = `${description}: ${current}/${total} (${percentage.toFixed(0)}%)`;
+  if (total > 0) {
+    const percentage = (current / total) * 100;
+    progress.show(`${description}: ${current}/${total}`, percentage, 'loading', 'progress-update');
     
     if (percentage === 100) {
       setTimeout(() => {
-        progressBar.style.width = '0%';
-        progressText.textContent = '';
-      }, 1000);
+        progress.show(`${description} complete`, 100, 'complete', 'progress-update', 2000);
+      }, 500);
     }
   }
 }
@@ -1192,14 +1264,22 @@ async function generateVisualization() {
     loadingElement.classList.remove('hidden');
   }
   
+  // Use the new ProgressTracker for visualization loading
+  const progress = ProgressTracker.getInstance();
+  progress.show('Generating visualization...', 0, 'loading', 'visualization');
+  
   try {
     // Call the Python function to get visualization data
     const visualizationData = await eel.get_gp_visualization_data(sampleSize)();
     
     // Render the visualization
     renderVisualization(visualizationData);
+    
+    // Update progress
+    progress.show('Visualization complete', 100, 'complete', 'visualization', 2000);
   } catch (error) {
     showAlert(`Error generating visualization: ${error}`, 'danger');
+    progress.show('Visualization failed', 100, 'error', 'visualization', 2000);
   } finally {
     // Hide loading indicator
     if (loadingElement) {
@@ -1360,3 +1440,15 @@ function renderVisualization(data) {
 eel.expose(showAlert);
 eel.expose(showLoading);
 eel.expose(updateProgress);
+
+// Expose ProgressTracker to Python
+if (typeof eel !== 'undefined') {
+  // Expose methods for Python to call
+  eel.expose(function showProgress(message, percentage, state, operationId, timeout) {
+    ProgressTracker.getInstance().show(message, percentage, state, operationId, timeout);
+  }, 'show_progress');
+  
+  eel.expose(function hideProgress(operationId) {
+    ProgressTracker.getInstance().hide(operationId);
+  }, 'hide_progress');
+}
