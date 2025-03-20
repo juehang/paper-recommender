@@ -19,6 +19,8 @@ embedding_model = None
 vector_store = None
 onboarder = None
 recommender = None
+progress_tracker = None  # Global progress tracker
+is_initialized = False   # Flag to track initialization status
 
 # Custom progress tracker for UI
 class UiProgressTracker(ProgressTracker):
@@ -44,17 +46,18 @@ class UiProgressTracker(ProgressTracker):
     def update_ui(self):
         try:
             percentage = (self.current / self.total * 100) if self.total > 0 else 0
-            # Call updateProgress instead of show_progress to update the progress bar
-            eel.updateProgress(self.current, self.total, self.description)
+            # Print debug messages
+            print(f"DEBUG: update_ui called - {self.description}: {self.current}/{self.total} ({percentage:.1f}%)")
             
-            # Also call show_progress for compatibility with other UI elements
-            eel.show_progress(
-                message=self.description,
-                percentage=percentage,
-                state='loading',
-                operationId='progress-update'
-            )
-        except Exception:
+            # Call the properly exposed updateProgress function
+            try:
+                eel.updateProgress(self.current, self.total, self.description)
+                print(f"DEBUG: Called updateProgress successfully")
+            except Exception as e:
+                print(f"DEBUG: Error calling updateProgress: {str(e)}")
+        except Exception as e:
+            # Print the exception for debugging
+            print(f"DEBUG: Error in update_ui: {str(e)}")
             # Ignore errors if Eel is not initialized yet
             pass
 
@@ -77,18 +80,25 @@ def init_eel(web_dir=None):
 def init_components():
     """
     Initialize the components (data source, embedding model, vector store, etc.)
+    Only initializes once, subsequent calls will return immediately.
     """
-    global config, data_source, embedding_model, vector_store, onboarder, recommender
+    global config, data_source, embedding_model, vector_store, onboarder, recommender, progress_tracker, is_initialized
+    
+    # Return if already initialized
+    if is_initialized:
+        return
     
     # Load configuration
     config = load_config()
+    
+    # Create global progress tracker
+    progress_tracker = UiProgressTracker()
     
     # Create components
     data_source = ArXivDataSource(period=config["period_hours"])
     embedding_model = create_embedding_model(config)
     
-    # Set up progress tracker
-    progress_tracker = UiProgressTracker()
+    # Set progress tracker for embedding model
     embedding_model.set_progress_tracker(progress_tracker)
     
     # Create vector store
@@ -106,12 +116,38 @@ def init_components():
     
     # Create recommender
     recommender = create_recommender(
-        data_source, 
-        vector_store, 
+        data_source,
+        vector_store,
         embedding_model,
         max_samples=config["max_samples"],
         model_path=config["model_path"]
     )
+    
+    # Set initialization flag
+    is_initialized = True
+
+# Helper function to reset the global progress tracker
+def reset_progress_tracker(total=0, description="Processing"):
+    """
+    Reset the global progress tracker with new parameters.
+    
+    Args:
+        total (int): Total number of steps
+        description (str): Description of the operation
+    
+    Returns:
+        UiProgressTracker: The reset progress tracker
+    """
+    global progress_tracker, is_initialized
+    
+    # Initialize components if not already initialized
+    if not is_initialized:
+        init_components()
+    
+    # Reset the progress tracker
+    progress_tracker.reset(total=total, description=description)
+    
+    return progress_tracker
 
 # Eel exposed functions
 
@@ -134,8 +170,10 @@ def get_config() -> Dict[str, Any]:
     Returns:
         dict: The current configuration
     """
-    global config
-    if config is None:
+    global config, data_source, embedding_model, vector_store, onboarder, recommender, progress_tracker, is_initialized
+    if not is_initialized:
+        init_components()
+    elif config is None:
         print("Loading configuration...")
         config = load_config()
         print(f"Configuration loaded: {len(config)} keys")
@@ -163,7 +201,7 @@ def save_ui_config(new_config: Dict[str, Any]) -> bool:
     Returns:
         bool: True if successful, False otherwise
     """
-    global config
+    global config, data_source, embedding_model, vector_store, onboarder, recommender, progress_tracker, is_initialized
     try:
         save_config(new_config)
         config = new_config
@@ -180,8 +218,8 @@ def prepare_onboarding_candidates() -> List[List[Dict[str, Any]]]:
     Returns:
         list: A list of lists of paper dictionaries, one list per strategy
     """
-    global onboarder
-    if onboarder is None:
+    global onboarder, is_initialized
+    if not is_initialized:
         init_components()
     
     # Prepare candidates
@@ -216,8 +254,8 @@ def commit_onboarding(ratings: List[Tuple[int, int]]) -> Dict[str, Any]:
     Returns:
         dict: Statistics about the onboarding process
     """
-    global onboarder
-    if onboarder is None:
+    global onboarder, is_initialized
+    if not is_initialized:
         init_components()
     
     # Set ratings
@@ -240,8 +278,8 @@ def add_custom_paper(title: str, abstract: str, link: str, rating: int) -> bool:
     Returns:
         bool: True if successful, False otherwise
     """
-    global onboarder
-    if onboarder is None:
+    global onboarder, is_initialized
+    if not is_initialized:
         init_components()
     
     return onboarder.add_custom_paper(title, abstract, link, rating)
@@ -265,33 +303,52 @@ def get_recommendations(
     Returns:
         list: A list of recommended papers
     """
-    global recommender, config
-    if recommender is None:
+    global config, data_source, embedding_model, vector_store, onboarder, recommender, progress_tracker, is_initialized
+    if not is_initialized:
         init_components()
     
-    # Use provided values or defaults from config
-    num_recs = num_recommendations or config["num_recommendations"]
-    exp_weight = exploration_weight or config["exploration_weight"]
-    n_nearest = n_nearest_embeddings or config["n_nearest_embeddings"]
-    num_samples = gp_num_samples or config["gp_num_samples"]
+    # Initialize the progress tracker with a description only
+    # The actual total and progress updates will be handled by the recommender
+    reset_progress_tracker(total=0, description="Starting recommendation process")
     
-    # Get recommendations
-    recommendations = recommender.recommend(
-        num_recommendations=num_recs,
-        exploration_weight=exp_weight,
-        n_nearest_embeddings=n_nearest,
-        gp_num_samples=num_samples
-    )
-    
-    # Convert to JSON-serializable format
-    result = []
-    for rec in recommendations:
-        # Create a copy without the embedding (not needed in UI)
-        # but keep the document field which is needed for rating submissions
-        rec_copy = {k: v for k, v in rec.items() if k != 'embedding'}
-        result.append(rec_copy)
-    
-    return result
+    try:
+        # Use provided values or defaults from config
+        num_recs = num_recommendations or config["num_recommendations"]
+        exp_weight = exploration_weight or config["exploration_weight"]
+        n_nearest = n_nearest_embeddings or config["n_nearest_embeddings"]
+        num_samples = gp_num_samples or config["gp_num_samples"]
+        
+        # Make sure the embedding model has the global progress tracker
+        embedding_model.set_progress_tracker(progress_tracker)
+        
+        # Get recommendations - the recommender will handle progress tracking
+        recommendations = recommender.recommend(
+            num_recommendations=num_recs,
+            exploration_weight=exp_weight,
+            n_nearest_embeddings=n_nearest,
+            gp_num_samples=num_samples
+        )
+        
+        # Update description for final processing
+        progress_tracker.description = "Processing recommendation results"
+        
+        # Convert to JSON-serializable format
+        result = []
+        for rec in recommendations:
+            # Create a copy without the embedding (not needed in UI)
+            # but keep the document field which is needed for rating submissions
+            rec_copy = {k: v for k, v in rec.items() if k != 'embedding'}
+            result.append(rec_copy)
+        
+        # Complete the progress
+        progress_tracker.description = "Recommendations complete"
+        
+        return result
+    except Exception as e:
+        # Update progress tracker to show error
+        progress_tracker.description = f"Error generating recommendations: {str(e)}"
+        # Re-raise the exception
+        raise
 
 @eel.expose
 def add_recommendation_ratings(ratings: List[Dict[str, Any]]) -> int:
@@ -304,8 +361,8 @@ def add_recommendation_ratings(ratings: List[Dict[str, Any]]) -> int:
     Returns:
         int: Number of ratings added
     """
-    global vector_store
-    if vector_store is None:
+    global config, data_source, embedding_model, vector_store, onboarder, recommender, progress_tracker, is_initialized
+    if not is_initialized:
         init_components()
     
     count = 0
@@ -327,8 +384,8 @@ def bootstrap_recommender() -> bool:
     Returns:
         bool: True if successful, False otherwise
     """
-    global recommender
-    if recommender is None:
+    global config, data_source, embedding_model, vector_store, onboarder, recommender, progress_tracker, is_initialized
+    if not is_initialized:
         init_components()
     
     return recommender.bootstrap(force=True)
@@ -344,12 +401,12 @@ def get_chroma_documents(time_filter=30) -> List[Dict[str, Any]]:
     Returns:
         list: A list of documents with their metadata
     """
-    global vector_store
-    if vector_store is None:
+    global vector_store, is_initialized
+    if not is_initialized:
         init_components()
     
-    # Create a progress tracker for database operations
-    progress_tracker = UiProgressTracker(total=100, description="Loading database entries")
+    # Reset the global progress tracker for this operation
+    reset_progress_tracker(total=100, description="Loading database entries")
     progress_tracker.update_to(10)  # Show initial progress
     
     try:
@@ -399,8 +456,8 @@ def get_chroma_documents(time_filter=30) -> List[Dict[str, Any]]:
         progress_tracker.update_to(progress_tracker.total)
         return result
     finally:
-        # Ensure progress tracker is closed even if an exception occurs
-        progress_tracker.close()
+        # No need to close the progress tracker as it's reused
+        pass
 
 @eel.expose
 def search_chroma_documents(query_text: str, num_results: int = 10, time_filter: int = 30) -> List[Dict[str, Any]]:
@@ -415,12 +472,12 @@ def search_chroma_documents(query_text: str, num_results: int = 10, time_filter:
     Returns:
         list: A list of documents with their metadata and similarity scores
     """
-    global vector_store, embedding_model
-    if vector_store is None or embedding_model is None:
+    global vector_store, embedding_model, is_initialized
+    if not is_initialized:
         init_components()
     
-    # Create a progress tracker for semantic search
-    progress_tracker = UiProgressTracker(total=100, description="Performing semantic search")
+    # Reset the global progress tracker for this operation
+    reset_progress_tracker(total=100, description="Performing semantic search")
     progress_tracker.update_to(10)  # Show initial progress
     
     try:
@@ -485,8 +542,8 @@ def search_chroma_documents(query_text: str, num_results: int = 10, time_filter:
         progress_tracker.update_to(progress_tracker.total)
         return processed_results
     finally:
-        # Ensure progress tracker is closed even if an exception occurs
-        progress_tracker.close()
+        # No need to close the progress tracker as it's reused
+        pass
 
 @eel.expose
 def get_gp_visualization_data(sample_size: int = 30) -> Dict[str, Any]:
@@ -499,8 +556,8 @@ def get_gp_visualization_data(sample_size: int = 30) -> Dict[str, Any]:
     Returns:
         dict: Visualization data including points, labels, and metadata
     """
-    global recommender, vector_store
-    if recommender is None or vector_store is None:
+    global config, data_source, embedding_model, vector_store, onboarder, recommender, progress_tracker, is_initialized
+    if not is_initialized:
         init_components()
     
     # Ensure the recommender is bootstrapped
@@ -652,10 +709,8 @@ def start_app(web_dir=None, mode="chrome-app", host="localhost", port=8000, bloc
     # Initialize Eel
     init_eel(web_dir)
     
-    # Load configuration only (defer heavy component initialization)
-    global config
-    if config is None:
-        config = load_config()
+    # Initialize all components
+    init_components()
     
     # Start Eel
     eel.start('index.html', mode=mode, host=host, port=port, block=block)

@@ -300,14 +300,29 @@ window.PaperRecommender = window.PaperRecommender || {};
     };
 })(window.PaperRecommender);
 
-// Expose functions for Eel to call
+// Define functions for Eel to call
+function showProgress(message, percentage, state, operationId, timeout) {
+    window.PaperRecommender.components.ProgressTracker.getInstance().show(message, percentage, state, operationId, timeout);
+}
+
+function hideProgress(operationId) {
+    window.PaperRecommender.components.ProgressTracker.getInstance().hide(operationId);
+}
+
+function updateProgress(current, total, description) {
+    console.log(`Progress update: ${description} - ${current}/${total}`);
+    const percentage = (current / total * 100) || 0;
+    window.PaperRecommender.components.ProgressTracker.getInstance().show(
+        `${description}: ${current}/${total}`,
+        percentage,
+        'loading',
+        'progress-update'
+    );
+}
+
+// Expose functions to Eel
 if (typeof eel !== 'undefined') {
-    // Expose methods for Python to call
-    eel.expose(function showProgress(message, percentage, state, operationId, timeout) {
-        window.PaperRecommender.components.ProgressTracker.getInstance().show(message, percentage, state, operationId, timeout);
-    }, 'show_progress');
-    
-    eel.expose(function hideProgress(operationId) {
-        window.PaperRecommender.components.ProgressTracker.getInstance().hide(operationId);
-    }, 'hide_progress');
+    eel.expose(showProgress, 'show_progress');
+    eel.expose(hideProgress, 'hide_progress');
+    eel.expose(updateProgress, 'updateProgress');
 }

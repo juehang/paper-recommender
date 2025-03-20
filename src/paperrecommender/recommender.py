@@ -183,7 +183,16 @@ class GaussianRegressionRecommender(Recommender):
         Returns:
             tuple: (predicted_rating, lower_bound, upper_bound)
         """
+        # Check if we have a progress tracker from the embedding model
+        progress_tracker = self.embedding_model.progress_tracker
+        
         # Get similar documents
+        if progress_tracker:
+            # Store the original description to restore later
+            original_description = progress_tracker.description
+            # Only update the description, not the progress bar
+            progress_tracker.description = "Finding similar documents"
+        
         results = self.vector_store.search([document], num_results=n_nearest)
         
         if "distances" not in results or not results["distances"]:
@@ -200,8 +209,16 @@ class GaussianRegressionRecommender(Recommender):
         # Reshape for prediction
         X_pred = similarities.reshape(-1, 1)
         
+        if progress_tracker:
+            # Only update the description, not the progress bar
+            progress_tracker.description = "Sampling from Gaussian Process model"
+        
         # Draw samples from the GP posterior
         y_samples = np.clip(np.exp(self.model.sample_y(X_pred, num_samples))-0.1, a_min=0.1, a_max=np.inf)
+        
+        if progress_tracker:
+            # Only update the description, not the progress bar
+            progress_tracker.description = "Calculating rating predictions"
         
         # Calculate statistics from samples
         sample_ratings = []
@@ -231,9 +248,13 @@ class GaussianRegressionRecommender(Recommender):
         lower_bound = np.quantile(sample_ratings, lower_quantile)
         upper_bound = np.quantile(sample_ratings, upper_quantile)
         
+        # Restore original description
+        if progress_tracker and original_description:
+            progress_tracker.description = original_description
+        
         return np.median(sample_ratings), lower_bound, upper_bound
     
-    def recommend(self, num_recommendations=10, exploration_weight=1.0, n_nearest_embeddings=None, gp_num_samples=None):
+    def recommend(self, num_recommendations=10, exploration_weight=1.0, n_nearest_embeddings=None, gp_num_samples=None, refresh_data=False):
         """
         Recommend new papers from the data source.
         
@@ -249,8 +270,22 @@ class GaussianRegressionRecommender(Recommender):
         Returns:
             list: A list of recommended papers with predicted ratings
         """
+        # Get a reference to the progress tracker from the embedding model
+        from .common import ProgressTracker
+        progress_tracker = self.embedding_model.progress_tracker
+        
+        # If we have a progress tracker, update it to show we're starting
+        if progress_tracker:
+            # Only update the description, not the progress bar
+            progress_tracker.description = "Preparing recommendation process"
+        
         # Ensure we have fresh data
-        self.data_source.refresh_data()
+        if refresh_data:
+            self.data_source.refresh_data()
+        
+        if progress_tracker:
+            # Only update the description, not the progress bar
+            progress_tracker.description = "Checking recommendation model"
         
         # Check if we have a model
         if self.model is None:
@@ -260,6 +295,10 @@ class GaussianRegressionRecommender(Recommender):
                 # If we couldn't bootstrap, return an empty list
                 return []
         
+        if progress_tracker:
+            # Only update the description, not the progress bar
+            progress_tracker.description = "Retrieving papers from data source"
+        
         # Get new papers from the data source
         titles = self.data_source.titles
         abstracts = self.data_source.abstracts
@@ -267,6 +306,10 @@ class GaussianRegressionRecommender(Recommender):
         
         if not titles:
             return []
+        
+        if progress_tracker:
+            # Only update the description, not the progress bar
+            progress_tracker.description = "Filtering existing papers"
         
         # First pass: count papers that need embeddings (not in vector store)
         papers_to_process = []
@@ -284,56 +327,39 @@ class GaussianRegressionRecommender(Recommender):
         if filtered_count > 0:
             print(f"Filtered out {filtered_count} papers that already exist in the vector store.")
         
-        # Use the existing progress tracker if available, or create a temporary one
-        from .common import ProgressTracker
-        original_tracker = self.embedding_model.progress_tracker
-        
-        # Set up a progress tracker for the embedding process
-        if original_tracker:
-            # Use the existing tracker
-            original_tracker.reset(
+        if progress_tracker:
+            # Reset the progress tracker specifically for embedding generation
+            # This is the only step that will update the progress bar
+            progress_tracker.reset(
                 total=len(papers_to_process),
                 description="Generating embeddings for recommendations"
             )
-        else:
-            # Create a temporary tracker with disable=True to prevent console output
-            temp_tracker = ProgressTracker(
-                total=len(papers_to_process),
-                description="Generating embeddings for recommendations",
-                disable=True
-            )
-            self.embedding_model.set_progress_tracker(temp_tracker)
         
         # Second pass: generate embeddings with progress tracking
+        # The embedding_model.get_embedding method will update the progress tracker
         new_papers = []
-        try:
-            for title, abstract, link, document in papers_to_process:
-                embedding = self.embedding_model.get_embedding(document)
-                
-                new_papers.append({
-                    "title": title,
-                    "abstract": abstract,
-                    "link": link,
-                    "document": document,
-                    "embedding": embedding
-                })
-        finally:
-            # Ensure progress tracker is closed even if an exception occurs
-            if original_tracker:
-                original_tracker.close()
-            else:
-                # Close the temporary tracker if we created one
-                self.embedding_model.progress_tracker.close()
-                
-            # Reset the progress tracker in the embedding model if we created a temporary one
-            if not original_tracker:
-                self.embedding_model.set_progress_tracker(None)
+        for title, abstract, link, document in papers_to_process:
+            embedding = self.embedding_model.get_embedding(document)
+            
+            new_papers.append({
+                "title": title,
+                "abstract": abstract,
+                "link": link,
+                "document": document,
+                "embedding": embedding
+            })
+            
+            # Progress is updated by the embedding_model.get_embedding method
         
         # Use config values if not provided
         from .config import load_config
         config = load_config()
         n_nearest = n_nearest_embeddings or config.get("n_nearest_embeddings", 10)
         num_samples = gp_num_samples or config.get("gp_num_samples", 100)
+        
+        if progress_tracker:
+            # Only update the description, not the progress bar
+            progress_tracker.description = "Calculating recommendations"
         
         # For each new paper, find similar papers in the vector store
         recommendations = []
@@ -368,8 +394,17 @@ class GaussianRegressionRecommender(Recommender):
                 "acquisition_value": float(acquisition_value)
             })
         
+        if progress_tracker:
+            # Only update the description, not the progress bar
+            progress_tracker.description = "Sorting and finalizing recommendations"
+        
         # Sort by acquisition value (descending) instead of just predicted rating
         recommendations.sort(key=lambda x: x["acquisition_value"], reverse=True)
+        
+        # Complete the progress
+        if progress_tracker:
+            # Only update the description, not the progress bar
+            progress_tracker.description = "Recommendation process complete"
         
         # Return top N recommendations
         return recommendations[:num_recommendations]

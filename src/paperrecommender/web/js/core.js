@@ -346,10 +346,5 @@
     if (typeof eel !== 'undefined') {
         eel.expose(showAlert);
         eel.expose(showLoading);
-        eel.expose(function updateProgress(current, total, description) {
-            if (components.updateProgress) {
-                components.updateProgress(current, total, description);
-            }
-        });
     }
 })(window.PaperRecommender);
