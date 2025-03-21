@@ -8,6 +8,7 @@ DEFAULT_CONFIG = {
     "model_path": os.path.expanduser("~/.paper_recommender/gp_model.pkl"),
     "embedding_cache_path": os.path.expanduser("~/.paper_recommender/embedding_cache.pkl"),
     "embedding_provider": "ollama",  # Embedding provider to use ("ollama" or "openai")
+    "ollama_embedding_model": "mxbai-embed-large",  # Ollama embedding model to use
     "openai_api_key": "",  # OpenAI API key (only used when embedding_provider is "openai")
     "openai_embedding_model": "text-embedding-ada-002",  # OpenAI embedding model to use
     "exploration_weight": 0.5,
@@ -111,6 +112,7 @@ def update_config_from_args(config, args):
         "model_path": "model_path",
         "embedding_cache_path": "embedding_cache_path",
         "embedding_provider": "embedding_provider",
+        "ollama_embedding_model": "ollama_embedding_model",
         "openai_api_key": "openai_api_key",
         "openai_embedding_model": "openai_embedding_model",
         "exploration_weight": "exploration_weight",

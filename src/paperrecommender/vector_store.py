@@ -147,3 +147,69 @@ class ChromaVectorStore(VectorStore):
         
         # Check if the document exists
         return document in all_docs["documents"]
+        
+    def recompute_embeddings(self, progress_tracker=None):
+        """
+        Recompute all embeddings in the vector store.
+        
+        This method:
+        1. Clears the embedding cache
+        2. Gets all documents from the collection
+        3. Deletes the collection
+        4. Recreates the collection
+        5. Re-adds all documents with fresh embeddings
+        
+        Args:
+            progress_tracker (ProgressTracker, optional): A progress tracker to update during recomputation
+            
+        Returns:
+            int: The number of documents recomputed
+        """
+        # Clear the embedding cache
+        self.embedding.clear_cache()
+        
+        # Get all documents from the collection
+        all_docs = self.get_all_documents()
+        doc_ids = all_docs["ids"]
+        documents = all_docs["documents"]
+        metadatas = all_docs["metadatas"]
+        
+        # Count documents for progress tracking
+        doc_count = len(doc_ids)
+        
+        # Update progress tracker if provided
+        if progress_tracker:
+            progress_tracker.reset(total=doc_count, description="Deleting collection")
+        
+        # Delete the collection
+        self.client.delete_collection("papers")
+        
+        # Recreate the collection with the same embedding function
+        class EmbeddingFunctionWrapper:
+            def __init__(self, embedding_model):
+                self.embedding_model = embedding_model
+                
+            def __call__(self, input):
+                return self.embedding_model.get_embedding(input)
+        
+        embedding_function = EmbeddingFunctionWrapper(self.embedding)
+        
+        self.collection = self.client.create_collection(
+            name="papers",
+            embedding_function=embedding_function,
+            metadata={"hnsw:space": "cosine"},
+        )
+        
+        # Update progress tracker
+        if progress_tracker:
+            progress_tracker.reset(total=doc_count, description="Recomputing embeddings")
+            
+        self.collection.add(
+            ids=doc_ids,
+            documents=documents,
+            metadatas=metadatas
+        )
+            
+
+        # Return the number of documents recomputed
+        return doc_count

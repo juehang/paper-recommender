@@ -463,6 +463,39 @@ def get_chroma_documents(time_filter=30) -> List[Dict[str, Any]]:
         pass
 
 @eel.expose
+def recompute_embeddings() -> int:
+    """
+    Recompute all embeddings in the vector store.
+    
+    This function:
+    1. Clears the embedding cache
+    2. Recomputes all embeddings in the vector store
+    
+    Returns:
+        int: The number of documents recomputed
+    """
+    global vector_store, embedding_model, progress_tracker, is_initialized
+    if not is_initialized:
+        init_components()
+    
+    # Reset the global progress tracker for this operation
+    reset_progress_tracker(total=100, description="Preparing to recompute embeddings")
+    progress_tracker.update_to(10)  # Show initial progress
+    
+    try:
+        # Recompute embeddings
+        doc_count = vector_store.recompute_embeddings(progress_tracker=progress_tracker)
+        
+        # Complete the progress
+        progress_tracker.description = f"Completed recomputing embeddings for {doc_count} documents"
+        progress_tracker.update_to(progress_tracker.total)
+        
+        return doc_count
+    except Exception as e:
+        progress_tracker.description = f"Error recomputing embeddings: {str(e)}"
+        raise
+
+@eel.expose
 def search_chroma_documents(query_text: str, num_results: int = 10, time_filter: int = 30) -> List[Dict[str, Any]]:
     """
     Perform semantic search on documents in the ChromaDB vector store.

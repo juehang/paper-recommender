@@ -4,6 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Paper Recommender</title>
+  <!-- Add Tailwind CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <!-- Custom Tailwind extensions -->
+  <link rel="stylesheet" href="css/tailwind-custom.css">
+  <!-- Keep original CSS for backward compatibility during migration -->
   <link rel="stylesheet" href="css/styles.css">
   <script type="text/javascript" src="/eel.js"></script>
   <script type="text/javascript" src="https://cdn.plot.ly/plotly-3.0.1.min.js"></script>
@@ -20,51 +25,63 @@
   </header> -->
   
   <!-- Navigation -->
-  <nav>
-    <div class="container">
-      <ul>
-        <li><a href="#" data-view="home" class="active">Home</a></li>
-        <li><a href="#" data-view="onboarding">Onboarding</a></li>
-        <li><a href="#" data-view="recommendations">Recommendations</a></li>
-        <li><a href="#" data-view="database">Database</a></li>
-        <li><a href="#" data-view="visualization">Visualization</a></li>
-        <li><a href="#" data-view="settings">Settings</a></li>
+  <nav class="fixed top-0 left-0 w-full bg-secondary-800 py-2 px-4 z-50 shadow-md">
+    <div class="max-w-6xl mx-auto px-5">
+      <ul class="flex flex-wrap">
+        <li class="mr-4">
+          <a href="#" data-view="home" class="text-white py-2 px-3 rounded hover:bg-secondary-700 transition-colors duration-300 active:bg-secondary-600 focus:outline-none focus:ring-2 focus:ring-primary-300">Home</a>
+        </li>
+        <li class="mr-4">
+          <a href="#" data-view="onboarding" class="text-white py-2 px-3 rounded hover:bg-secondary-700 transition-colors duration-300 active:bg-secondary-600 focus:outline-none focus:ring-2 focus:ring-primary-300">Onboarding</a>
+        </li>
+        <li class="mr-4">
+          <a href="#" data-view="recommendations" class="text-white py-2 px-3 rounded hover:bg-secondary-700 transition-colors duration-300 active:bg-secondary-600 focus:outline-none focus:ring-2 focus:ring-primary-300">Recommendations</a>
+        </li>
+        <li class="mr-4">
+          <a href="#" data-view="database" class="text-white py-2 px-3 rounded hover:bg-secondary-700 transition-colors duration-300 active:bg-secondary-600 focus:outline-none focus:ring-2 focus:ring-primary-300">Database</a>
+        </li>
+        <li class="mr-4">
+          <a href="#" data-view="visualization" class="text-white py-2 px-3 rounded hover:bg-secondary-700 transition-colors duration-300 active:bg-secondary-600 focus:outline-none focus:ring-2 focus:ring-primary-300">Visualization</a>
+        </li>
+        <li class="mr-4">
+          <a href="#" data-view="settings" class="text-white py-2 px-3 rounded hover:bg-secondary-700 transition-colors duration-300 active:bg-secondary-600 focus:outline-none focus:ring-2 focus:ring-primary-300">Settings</a>
+        </li>
       </ul>
     </div>
   </nav>
   
   <!-- Main Content -->
-  <main>
-    <div class="container">
+  <main class="pt-16 pb-16">
+    <div class="max-w-6xl mx-auto px-5">
       <!-- Alerts Container -->
       <div id="alerts-container"></div>
       
       <!-- Home View -->
       <div id="home-view" class="view">
-        <div class="card">
-          <div class="card-header">
-            <h2>Welcome to Paper Recommender</h2>
+        <div class="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 overflow-hidden">
+          <div class="bg-primary-600 text-white py-3 px-4">
+            <h2 class="text-xl font-semibold">Welcome to Paper Recommender</h2>
           </div>
-          <div class="card-body">
+          <div class="p-6">
             <p>Paper Recommender helps researchers discover relevant papers by:</p>
-            <ol>
-              <li>Fetching recent papers from arXiv</li>
-              <li>Using text embeddings to represent paper content</li>
-              <li>Learning your preferences through an onboarding process</li>
-              <li>Recommending papers using a variance-based Gaussian Process Regression model</li>
-              <li>Balancing exploration and exploitation to improve recommendations over time</li>
+            <ol class="list-decimal pl-5 mb-4">
+              <li class="mb-1">Fetching recent papers from arXiv</li>
+              <li class="mb-1">Using text embeddings to represent paper content</li>
+              <li class="mb-1">Learning your preferences through an onboarding process</li>
+              <li class="mb-1">Recommending papers using a variance-based Gaussian Process Regression model</li>
+              <li class="mb-1">Balancing exploration and exploitation to improve recommendations over time</li>
             </ol>
             
-            <div class="mt-4">
-              <h3>Getting Started</h3>
+            <div class="mt-6">
+              <h3 class="text-lg font-semibold mb-2 text-secondary-700">Getting Started</h3>
               <p>If this is your first time using Paper Recommender, you'll need to complete the onboarding process:</p>
-              <a href="#" class="btn mt-2" data-view="onboarding">Start Onboarding</a>
+              <a href="#" class="inline-block bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transition-colors duration-300 mt-2" data-view="onboarding">Start Onboarding</a>
             </div>
             
-            <div class="mt-4">
-              <h3>Already Onboarded?</h3>
+            <div class="mt-6">
+              <h3 class="text-lg font-semibold mb-2 text-secondary-700">Already Onboarded?</h3>
               <p>If you've already completed the onboarding process, you can get paper recommendations:</p>
-              <a href="#" class="btn mt-2" data-view="recommendations">Get Recommendations</a>
+              <a href="#" class="inline-block bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transition-colors duration-300 mt-2" data-view="recommendations">Get Recommendations</a>
             </div>
           </div>
         </div>
@@ -72,88 +89,88 @@
       
       <!-- Onboarding View -->
       <div id="onboarding-view" class="view hidden">
-        <div class="card mb-4">
-          <div class="card-header">
-            <h2>Onboarding</h2>
+        <div class="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 overflow-hidden mb-6">
+          <div class="bg-primary-600 text-white py-3 px-4">
+            <h2 class="text-xl font-semibold">Onboarding</h2>
           </div>
-          <div class="card-body">
-            <p>The onboarding process helps the system learn your preferences by asking you to rate papers. You'll be presented with papers selected using different strategies:</p>
-            <ul>
-              <li><strong>Random Selection:</strong> Papers selected randomly from recent submissions</li>
-              <li><strong>Diverse Selection:</strong> Papers selected to maximize diversity</li>
+          <div class="p-6">
+            <p class="mb-4">The onboarding process helps the system learn your preferences by asking you to rate papers. You'll be presented with papers selected using different strategies:</p>
+            <ul class="list-disc pl-5 mb-4">
+              <li class="mb-2"><span class="font-semibold">Random Selection:</span> Papers selected randomly from recent submissions</li>
+              <li class="mb-2"><span class="font-semibold">Diverse Selection:</span> Papers selected to maximize diversity</li>
             </ul>
             <p>Rate papers on a scale of 1-5 to help build a recommendation model tailored to your interests.</p>
           </div>
         </div>
         
-        <div class="card mb-4">
-          <div class="card-header">
-            <h3>Add Custom Paper</h3>
+        <div class="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 overflow-hidden mb-6">
+          <div class="bg-primary-600 text-white py-3 px-4">
+            <h3 class="text-lg font-semibold">Add Custom Paper</h3>
           </div>
-          <div class="card-body">
-            <p>You can also add a custom paper that you've already read and rate it:</p>
+          <div class="p-6">
+            <p class="mb-4">You can also add a custom paper that you've already read and rate it:</p>
             <form id="custom-paper-form">
-              <div class="form-group">
-                <label for="custom-paper-title">Title:</label>
-                <input type="text" id="custom-paper-title" required>
+              <div class="mb-4">
+                <label for="custom-paper-title" class="block mb-2 font-medium text-gray-700">Title:</label>
+                <input type="text" id="custom-paper-title" class="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors duration-200" required>
               </div>
-              <div class="form-group">
-                <label for="custom-paper-abstract">Abstract:</label>
-                <textarea id="custom-paper-abstract" rows="5" required></textarea>
+              <div class="mb-4">
+                <label for="custom-paper-abstract" class="block mb-2 font-medium text-gray-700">Abstract:</label>
+                <textarea id="custom-paper-abstract" rows="5" class="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors duration-200" required></textarea>
               </div>
-              <div class="form-group">
-                <label for="custom-paper-link">Link (optional):</label>
-                <input type="text" id="custom-paper-link">
+              <div class="mb-4">
+                <label for="custom-paper-link" class="block mb-2 font-medium text-gray-700">Link (optional):</label>
+                <input type="text" id="custom-paper-link" class="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors duration-200">
               </div>
-              <div class="form-group">
-                <label for="custom-paper-rating">Rating (1-5):</label>
-                <input type="number" id="custom-paper-rating" min="1" max="5" value="3" required>
+              <div class="mb-4">
+                <label for="custom-paper-rating" class="block mb-2 font-medium text-gray-700">Rating (1-5):</label>
+                <input type="number" id="custom-paper-rating" min="1" max="5" value="3" class="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors duration-200" required>
               </div>
-              <button type="submit" class="btn">Add Custom Paper</button>
+              <button type="submit" class="inline-block bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transition-colors duration-300">Add Custom Paper</button>
             </form>
           </div>
         </div>
         
         <form id="onboarding-form">
           <div id="onboarding-papers"></div>
-          <button type="submit" class="btn btn-primary mt-3">Submit Ratings</button>
+          <button type="submit" class="inline-block bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transition-colors duration-300 mt-3">Submit Ratings</button>
         </form>
       </div>
       
       <!-- Recommendations View -->
       <div id="recommendations-view" class="view hidden">
-        <div class="card mb-4">
-          <div class="card-header">
-            <h2>Recommendations</h2>
+        <div class="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 overflow-hidden mb-6">
+          <div class="bg-primary-600 text-white py-3 px-4">
+            <h2 class="text-xl font-semibold">Recommendations</h2>
           </div>
-          <div class="card-body">
-            <p>Based on your preferences, here are papers you might find interesting.</p>
-            <p>Rate the recommended papers to further improve future recommendations.</p>
-            <div class="button-group mt-2">
-              <button id="refresh-recommendations" class="btn">Refresh Recommendations</button>
-              <button id="retrain-model" class="btn">Re-train Model</button>
+          <div class="p-6">
+            <p class="mb-2">Based on your preferences, here are papers you might find interesting.</p>
+            <p class="mb-4">Rate the recommended papers to further improve future recommendations.</p>
+            <div class="flex gap-3 mt-4">
+              <button id="refresh-recommendations" class="btn-primary inline-block bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transition-colors duration-300">Refresh Recommendations</button>
+              <button id="retrain-model" class="btn inline-block bg-gray-200 text-gray-800 py-2 px-4 rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-opacity-50 transition-colors duration-300">Re-train Model</button>
             </div>
           </div>
         </div>
         
         <form id="recommendation-form">
-          <div id="recommendation-papers"></div>
+          <div id="recommendation-papers" class="grid grid-cols-1 md:grid-cols-1 lg:grid-cols-2 gap-6"></div>
         </form>
       </div>
       
       <!-- Database View -->
       <div id="database-view" class="view hidden">
-        <div class="card mb-4">
-          <div class="card-header">
-            <h2>ChromaDB Browser</h2>
+        <div class="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 overflow-hidden mb-6">
+          <div class="bg-primary-600 text-white py-3 px-4">
+            <h2 class="text-xl font-semibold">ChromaDB Browser</h2>
           </div>
-          <div class="card-body">
-            <p>Browse papers stored in the vector database.</p>
+          <div class="p-6">
+            <p class="mb-4">Browse papers stored in the vector database.</p>
             
-            <div class="form-row">
-              <div class="form-group col-md-4">
-                <label for="db-time-filter">Time Range:</label>
-                <select id="db-time-filter">
+            <div class="flex flex-wrap -mx-2">
+              <div class="w-full md:w-1/3 px-2 mb-4">
+                <label for="db-time-filter" class="block mb-2 font-medium text-gray-700">Time Range:</label>
+                <select id="db-time-filter" class="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors duration-200">
                   <option value="30" selected>Last 30 days</option>
                   <option value="90">Last 90 days</option>
                   <option value="180">Last 6 months</option>
@@ -162,14 +179,14 @@
                 </select>
               </div>
               
-              <div class="form-group col-md-4">
-                <label for="db-search">Text Search:</label>
-                <input type="text" id="db-search" placeholder="Filter by title or content...">
+              <div class="w-full md:w-1/3 px-2 mb-4">
+                <label for="db-search" class="block mb-2 font-medium text-gray-700">Text Search:</label>
+                <input type="text" id="db-search" placeholder="Filter by title or content..." class="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors duration-200">
               </div>
               
-              <div class="form-group col-md-4">
-                <label for="db-sort">Sort by:</label>
-                <select id="db-sort">
+              <div class="w-full md:w-1/3 px-2 mb-4">
+                <label for="db-sort" class="block mb-2 font-medium text-gray-700">Sort by:</label>
+                <select id="db-sort" class="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors duration-200">
                   <option value="timestamp-desc">Date Added (Newest First)</option>
                   <option value="timestamp-asc">Date Added (Oldest First)</option>
                   <option value="rating-desc">Rating (High to Low)</option>
@@ -178,64 +195,67 @@
               </div>
             </div>
             
-            <div class="semantic-search-container mt-3">
-              <h3>Semantic Search</h3>
-              <p>Find papers that are conceptually similar to your query, even if they don't contain the exact keywords.</p>
+            <div class="bg-gray-50 rounded-lg p-4 border border-gray-200 mt-6">
+              <h3 class="text-lg font-semibold mb-2 text-secondary-700">Semantic Search</h3>
+              <p class="mb-4">Find papers that are conceptually similar to your query, even if they don't contain the exact keywords.</p>
               
-              <div class="form-row">
-                <div class="form-group col-md-8">
-                  <input type="text" id="semantic-search-input" placeholder="Enter your semantic search query...">
+              <div class="flex flex-wrap -mx-2">
+                <div class="w-full md:w-2/3 px-2 mb-4">
+                  <input type="text" id="semantic-search-input" placeholder="Enter your semantic search query..." class="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors duration-200">
                 </div>
-                <div class="form-group col-md-2">
-                  <select id="semantic-results-count">
+                <div class="w-full md:w-1/6 px-2 mb-4">
+                  <select id="semantic-results-count" class="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors duration-200">
                     <option value="5">5 results</option>
                     <option value="10" selected>10 results</option>
                     <option value="20">20 results</option>
                     <option value="50">50 results</option>
                   </select>
                 </div>
-                <div class="form-group col-md-2">
-                  <button id="semantic-search-button" class="btn">Search</button>
+                <div class="w-full md:w-1/6 px-2 mb-4">
+                  <button id="semantic-search-button" class="w-full inline-block bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transition-colors duration-300">Search</button>
                 </div>
               </div>
             </div>
             
-            <button id="refresh-database" class="btn mt-2">Refresh Data</button>
+            <div class="flex gap-3 mt-4">
+              <button id="refresh-database" class="inline-block bg-gray-200 text-gray-800 py-2 px-4 rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-opacity-50 transition-colors duration-300">Refresh Data</button>
+              <button id="recompute-embeddings" class="inline-block bg-yellow-500 text-white py-2 px-4 rounded-md hover:bg-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:ring-opacity-50 transition-colors duration-300">Recompute Embeddings</button>
+            </div>
           </div>
         </div>
         
-        <div id="database-papers" class="papers-container">
+        <div id="database-papers" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <!-- Papers will be loaded here -->
         </div>
       </div>
       
       <!-- Visualization View -->
       <div id="visualization-view" class="view hidden">
-        <div class="card mb-4">
-          <div class="card-header">
-            <h2>Gaussian Process Visualization</h2>
+        <div class="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 overflow-hidden mb-6">
+          <div class="bg-primary-600 text-white py-3 px-4">
+            <h2 class="text-xl font-semibold">Gaussian Process Visualization</h2>
           </div>
-          <div class="card-body">
-            <p>Visualize the Gaussian Process model used for recommendations.</p>
+          <div class="p-6">
+            <p class="mb-4">Visualize the Gaussian Process model used for recommendations.</p>
             
-            <div class="form-row">
-              <div class="form-group col-md-6">
-                <label for="sample-size">Sample Size:</label>
-                <input type="number" id="sample-size" min="10" max="100" value="30">
-                <small>Number of random papers to include in visualization</small>
+            <div class="flex flex-wrap -mx-2">
+              <div class="w-full md:w-1/2 px-2 mb-4">
+                <label for="sample-size" class="block mb-2 font-medium text-gray-700">Sample Size:</label>
+                <input type="number" id="sample-size" min="10" max="100" value="30" class="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors duration-200">
+                <span class="text-sm text-gray-500 mt-1 block">Number of random papers to include in visualization</span>
               </div>
               
-              <div class="form-group col-md-6">
-                <button id="generate-visualization" class="btn">Generate Visualization</button>
+              <div class="w-full md:w-1/2 px-2 mb-4 flex items-end">
+                <button id="generate-visualization" class="btn-primary inline-block bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transition-colors duration-300">Generate Visualization</button>
               </div>
             </div>
             
-            <div id="visualization-container" class="mt-4">
-              <div id="visualization-loading" class="hidden">
-                <div class="spinner"></div>
-                <p>Generating visualization...</p>
+            <div class="mt-6">
+              <div id="visualization-loading" class="hidden flex flex-col items-center justify-center p-8">
+                <div class="w-12 h-12 border-4 border-gray-200 border-t-primary-600 rounded-full animate-spin"></div>
+                <p class="mt-4 text-gray-600">Generating visualization...</p>
               </div>
-              <div id="plotly-visualization" style="width:100%; height:600px;"></div>
+              <div id="plotly-visualization" class="w-full h-[600px] border border-gray-200 rounded-lg bg-white"></div>
             </div>
           </div>
         </div>
@@ -243,100 +263,105 @@
       
       <!-- Settings View -->
       <div id="settings-view" class="view hidden">
-        <div class="card">
-          <div class="card-header">
-            <h2>Settings</h2>
+        <div class="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 overflow-hidden mb-6">
+          <div class="bg-primary-600 text-white py-3 px-4">
+            <h2 class="text-xl font-semibold">Settings</h2>
           </div>
-          <div class="card-body">
+          <div class="p-6">
             <form id="config-form">
-              <h3 class="mb-3">Data Sources</h3>
-              <div class="form-group">
-                <label for="period_hours">Time Period (hours):</label>
-                <input type="number" id="period_hours" name="period_hours" min="1" max="720">
-                <small>Time window for fetching recent papers from arXiv</small>
+              <h3 class="text-lg font-semibold mb-3 pb-2 border-b border-gray-200 text-secondary-700">Data Sources</h3>
+              <div class="mb-4">
+                <label for="period_hours" class="block mb-2 font-medium text-gray-700">Time Period (hours):</label>
+                <input type="number" id="period_hours" name="period_hours" min="1" max="720" class="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors duration-200">
+                <span class="text-sm text-gray-500 mt-1 block">Time window for fetching recent papers from arXiv</span>
               </div>
               
-              <h3 class="mb-3 mt-4">Embeddings</h3>
-              <div class="form-group">
-                <label for="embedding_provider">Embedding Provider:</label>
-                <select id="embedding_provider" name="embedding_provider">
+              <h3 class="text-lg font-semibold mb-3 mt-6 pb-2 border-b border-gray-200 text-secondary-700">Embeddings</h3>
+              <div class="mb-4">
+                <label for="embedding_provider" class="block mb-2 font-medium text-gray-700">Embedding Provider:</label>
+                <select id="embedding_provider" name="embedding_provider" class="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors duration-200">
                   <option value="ollama">Ollama (local)</option>
                   <option value="openai">OpenAI (API)</option>
                 </select>
               </div>
-              <div class="form-group">
-                <label for="openai_api_key">OpenAI API Key:</label>
-                <input type="text" id="openai_api_key" name="openai_api_key">
-                <small>Only used when embedding provider is "openai"</small>
+              <div class="mb-4">
+                <label for="ollama_embedding_model" class="block mb-2 font-medium text-gray-700">Ollama Embedding Model:</label>
+                <input type="text" id="ollama_embedding_model" name="ollama_embedding_model" class="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors duration-200">
+                <span class="text-sm text-gray-500 mt-1 block">Only used when embedding provider is "ollama" (e.g., mxbai-embed-large, nomic-embed-text, all-MiniLM-L6-v2)</span>
               </div>
-              <div class="form-group">
-                <label for="openai_embedding_model">OpenAI Embedding Model:</label>
-                <input type="text" id="openai_embedding_model" name="openai_embedding_model">
-                <small>Only used when embedding provider is "openai"</small>
+              <div class="mb-4">
+                <label for="openai_api_key" class="block mb-2 font-medium text-gray-700">OpenAI API Key:</label>
+                <input type="text" id="openai_api_key" name="openai_api_key" class="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors duration-200">
+                <span class="text-sm text-gray-500 mt-1 block">Only used when embedding provider is "openai"</span>
               </div>
-              
-              <h3 class="mb-3 mt-4">Onboarding</h3>
-              <div class="form-group">
-                <label for="random_sample_size">Random Sample Size:</label>
-                <input type="number" id="random_sample_size" name="random_sample_size" min="1" max="20">
-                <small>Number of random papers to show during onboarding</small>
-              </div>
-              <div class="form-group">
-                <label for="diverse_sample_size">Diverse Sample Size:</label>
-                <input type="number" id="diverse_sample_size" name="diverse_sample_size" min="1" max="20">
-                <small>Number of diverse papers to show during onboarding</small>
+              <div class="mb-4">
+                <label for="openai_embedding_model" class="block mb-2 font-medium text-gray-700">OpenAI Embedding Model:</label>
+                <input type="text" id="openai_embedding_model" name="openai_embedding_model" class="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors duration-200">
+                <span class="text-sm text-gray-500 mt-1 block">Only used when embedding provider is "openai"</span>
               </div>
               
-              <h3 class="mb-3 mt-4">Recommendations</h3>
-              <div class="form-group">
-                <label for="num_recommendations">Number of Recommendations:</label>
-                <input type="number" id="num_recommendations" name="num_recommendations" min="1" max="20">
-                <small>Number of recommendations to show</small>
+              <h3 class="text-lg font-semibold mb-3 mt-6 pb-2 border-b border-gray-200 text-secondary-700">Onboarding</h3>
+              <div class="mb-4">
+                <label for="random_sample_size" class="block mb-2 font-medium text-gray-700">Random Sample Size:</label>
+                <input type="number" id="random_sample_size" name="random_sample_size" min="1" max="20" class="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors duration-200">
+                <span class="text-sm text-gray-500 mt-1 block">Number of random papers to show during onboarding</span>
               </div>
-              <div class="form-group">
-                <label for="exploration_weight">Exploration Weight:</label>
-                <input type="number" id="exploration_weight" name="exploration_weight" min="0" max="5" step="0.1">
-                <small>Controls the balance between exploration and exploitation (higher values favor exploration)</small>
-              </div>
-              <div class="form-group">
-                <label for="max_samples">Max Samples:</label>
-                <input type="number" id="max_samples" name="max_samples" min="10" max="1000">
-                <small>Maximum number of samples for similarity search</small>
-              </div>
-              <div class="form-group">
-                <label for="n_nearest_embeddings">Nearest Embeddings:</label>
-                <input type="number" id="n_nearest_embeddings" name="n_nearest_embeddings" min="1" max="100">
-                <small>Number of nearest embeddings to use for prediction</small>
-              </div>
-              <div class="form-group">
-                <label for="gp_num_samples">GP Samples:</label>
-                <input type="number" id="gp_num_samples" name="gp_num_samples" min="10" max="1000">
-                <small>Number of GP samples for uncertainty estimation</small>
-              </div>
-              <div class="form-group">
-                <label for="gp_bootstrap_num_datapoints">GP Bootstrap Datapoints:</label>
-                <input type="number" id="gp_bootstrap_num_datapoints" name="gp_bootstrap_num_datapoints" min="10" max="1000">
-                <small>Number of datapoints to use for GP bootstrap</small>
+              <div class="mb-4">
+                <label for="diverse_sample_size" class="block mb-2 font-medium text-gray-700">Diverse Sample Size:</label>
+                <input type="number" id="diverse_sample_size" name="diverse_sample_size" min="1" max="20" class="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors duration-200">
+                <span class="text-sm text-gray-500 mt-1 block">Number of diverse papers to show during onboarding</span>
               </div>
               
-              <h3 class="mb-3 mt-4">Storage</h3>
-              <div class="form-group">
-                <label for="chroma_db_path">ChromaDB Path:</label>
-                <input type="text" id="chroma_db_path" name="chroma_db_path">
-                <small>Path to ChromaDB directory</small>
+              <h3 class="text-lg font-semibold mb-3 mt-6 pb-2 border-b border-gray-200 text-secondary-700">Recommendations</h3>
+              <div class="mb-4">
+                <label for="num_recommendations" class="block mb-2 font-medium text-gray-700">Number of Recommendations:</label>
+                <input type="number" id="num_recommendations" name="num_recommendations" min="1" max="20" class="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors duration-200">
+                <span class="text-sm text-gray-500 mt-1 block">Number of recommendations to show</span>
               </div>
-              <div class="form-group">
-                <label for="model_path">Model Path:</label>
-                <input type="text" id="model_path" name="model_path">
-                <small>Path to model pickle file</small>
+              <div class="mb-4">
+                <label for="exploration_weight" class="block mb-2 font-medium text-gray-700">Exploration Weight:</label>
+                <input type="number" id="exploration_weight" name="exploration_weight" min="0" max="5" step="0.1" class="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors duration-200">
+                <span class="text-sm text-gray-500 mt-1 block">Controls the balance between exploration and exploitation (higher values favor exploration)</span>
               </div>
-              <div class="form-group">
-                <label for="embedding_cache_path">Embedding Cache Path:</label>
-                <input type="text" id="embedding_cache_path" name="embedding_cache_path">
-                <small>Path to embedding cache file</small>
+              <div class="mb-4">
+                <label for="max_samples" class="block mb-2 font-medium text-gray-700">Max Samples:</label>
+                <input type="number" id="max_samples" name="max_samples" min="10" max="1000" class="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors duration-200">
+                <span class="text-sm text-gray-500 mt-1 block">Maximum number of samples for similarity search</span>
+              </div>
+              <div class="mb-4">
+                <label for="n_nearest_embeddings" class="block mb-2 font-medium text-gray-700">Nearest Embeddings:</label>
+                <input type="number" id="n_nearest_embeddings" name="n_nearest_embeddings" min="1" max="100" class="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors duration-200">
+                <span class="text-sm text-gray-500 mt-1 block">Number of nearest embeddings to use for prediction</span>
+              </div>
+              <div class="mb-4">
+                <label for="gp_num_samples" class="block mb-2 font-medium text-gray-700">GP Samples:</label>
+                <input type="number" id="gp_num_samples" name="gp_num_samples" min="10" max="1000" class="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors duration-200">
+                <span class="text-sm text-gray-500 mt-1 block">Number of GP samples for uncertainty estimation</span>
+              </div>
+              <div class="mb-4">
+                <label for="gp_bootstrap_num_datapoints" class="block mb-2 font-medium text-gray-700">GP Bootstrap Datapoints:</label>
+                <input type="number" id="gp_bootstrap_num_datapoints" name="gp_bootstrap_num_datapoints" min="10" max="1000" class="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors duration-200">
+                <span class="text-sm text-gray-500 mt-1 block">Number of datapoints to use for GP bootstrap</span>
               </div>
               
-              <button type="submit" class="btn btn-primary mt-4">Save Settings</button>
+              <h3 class="text-lg font-semibold mb-3 mt-6 pb-2 border-b border-gray-200 text-secondary-700">Storage</h3>
+              <div class="mb-4">
+                <label for="chroma_db_path" class="block mb-2 font-medium text-gray-700">ChromaDB Path:</label>
+                <input type="text" id="chroma_db_path" name="chroma_db_path" class="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors duration-200">
+                <span class="text-sm text-gray-500 mt-1 block">Path to ChromaDB directory</span>
+              </div>
+              <div class="mb-4">
+                <label for="model_path" class="block mb-2 font-medium text-gray-700">Model Path:</label>
+                <input type="text" id="model_path" name="model_path" class="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors duration-200">
+                <span class="text-sm text-gray-500 mt-1 block">Path to model pickle file</span>
+              </div>
+              <div class="mb-4">
+                <label for="embedding_cache_path" class="block mb-2 font-medium text-gray-700">Embedding Cache Path:</label>
+                <input type="text" id="embedding_cache_path" name="embedding_cache_path" class="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors duration-200">
+                <span class="text-sm text-gray-500 mt-1 block">Path to embedding cache file</span>
+              </div>
+              
+              <button type="submit" class="inline-block bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transition-colors duration-300 mt-6">Save Settings</button>
             </form>
           </div>
         </div>
@@ -345,25 +370,25 @@
   </main>
   
   <!-- Footer with Progress Indicator -->
-  <footer>
+  <footer class="fixed bottom-0 left-0 w-full bg-secondary-800 text-white text-center py-4 z-50 shadow-lg">
     <!-- Progress Indicator -->
-    <div id="progress-footer" class="hidden">
-      <div class="container flex items-center">
-        <div id="progress-icon" class="mr-3 w-6 h-6 flex items-center justify-center">
+    <div id="progress-footer" class="hidden bg-white bg-opacity-95 border-t border-gray-200 transition-all duration-300 py-3">
+      <div class="max-w-6xl mx-auto px-5 flex items-center">
+        <div id="progress-icon" class="mr-3 w-6 h-6 flex items-center justify-center flex-shrink-0">
           <!-- Dynamically updated icon -->
         </div>
-        <div id="progress-text" class="flex-grow text-sm text-gray-600">
+        <div id="progress-text" class="flex-grow text-sm text-gray-700 mr-4 font-medium">
           <!-- Progress description -->
         </div>
-        <div id="progress-bar-container" class="w-1/3 bg-gray-300 h-1 rounded-full">
-          <div id="progress-bar" class="bg-blue-500 h-1 rounded-full" style="width: 0%"></div>
+        <div id="progress-bar-container" class="w-1/3 bg-gray-200 h-1.5 rounded-full flex-shrink-0 overflow-hidden">
+          <div id="progress-bar" class="bg-primary-600 h-1.5 rounded-full transition-all duration-300" style="width: 0%"></div>
         </div>
       </div>
     </div>
     
     <!-- Copyright Information -->
-    <div class="container">
-      <p>Paper Recommender by Qin Juehang</p>
+    <div class="max-w-6xl mx-auto px-5">
+      <p class="text-gray-200">Paper Recommender by Qin Juehang</p>
     </div>
   </footer>
 </body>

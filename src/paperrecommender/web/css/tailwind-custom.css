@@ -1,0 +1,102 @@
+/**
+ * Paper Recommender - Custom CSS for Tailwind Integration
+ * This file contains custom styles that can't be directly replaced by Tailwind classes
+ */
+
+/* Animation for spinner */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+/* Animation for alerts */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.3s ease-out;
+}
+
+/* Rating stars - to be gradually phased out */
+.rating input {
+  display: none;
+}
+
+/* Plotly visualization container */
+#plotly-visualization {
+  min-height: 400px;
+}
+
+/* Custom scrollbar for better UX */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+/* Paper abstract truncation */
+.paper-abstract {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 5;
+  -webkit-box-orient: vertical;
+}
+
+/* Alerts container positioning */
+#alerts-container {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 1000;
+  width: 300px;
+}
+
+/* Ensure hidden elements are not displayed */
+.hidden {
+  display: none !important;
+}
+
+/* Responsive adjustments for mobile */
+@media (max-width: 640px) {
+  .papers-container {
+    grid-template-columns: 1fr !important;
+  }
+  
+  #progress-footer .container {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  #progress-text {
+    margin: 0.5rem 0;
+    width: 100%;
+  }
+  
+  #progress-bar-container {
+    width: 100% !important;
+  }
+}

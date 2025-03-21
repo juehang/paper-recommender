@@ -44,6 +44,19 @@ class EmbeddingModel:
                     pickle.dump(self.embedding_cache, f)
             except Exception as e:
                 print(f"Error saving embedding cache: {e}")
+                
+    def clear_cache(self):
+        """Clear the embedding cache and delete the cache file"""
+        # Clear the in-memory cache
+        self.embedding_cache = {}
+        
+        # Delete the cache file if it exists
+        if self.cache_path and os.path.exists(self.cache_path):
+            try:
+                os.remove(self.cache_path)
+                print(f"Deleted embedding cache file at {self.cache_path}")
+            except Exception as e:
+                print(f"Error deleting embedding cache file: {e}")
         
     def generate_embedding(self, text, url, model):
         raise NotImplementedError("This method should be overridden by subclasses.")
@@ -108,7 +121,7 @@ class OllamaEmbedding(EmbeddingModel):
     """
     Class for generating embeddings using the Ollama API.
     """
-    def __init__(self, url="http://localhost:11434/api/embeddings", model="nomic-embed-text", 
+    def __init__(self, url="http://localhost:11434/api/embeddings", model="mxbai-embed-large", 
                  max_cache_size=3000, cache_path=None):
         super().__init__(max_cache_size=max_cache_size, cache_path=cache_path)
         self.url = url
@@ -159,7 +172,10 @@ def create_embedding_model(config):
         api_key = config.get("openai_api_key", "")
         if not api_key:
             print("Warning: OpenAI embedding provider selected but no API key provided. Falling back to Ollama.")
-            return OllamaEmbedding(cache_path=config.get("embedding_cache_path"))
+            return OllamaEmbedding(
+                model=config.get("ollama_embedding_model", "mxbai-embed-large"),
+                cache_path=config.get("embedding_cache_path")
+            )
             
         return OpenAIEmbedding(
             api_key=api_key,
@@ -167,4 +183,7 @@ def create_embedding_model(config):
             cache_path=config.get("embedding_cache_path")
         )
     else:  # Default to Ollama
-        return OllamaEmbedding(cache_path=config.get("embedding_cache_path"))
+        return OllamaEmbedding(
+            model=config.get("ollama_embedding_model", "mxbai-embed-large"),
+            cache_path=config.get("embedding_cache_path")
+        )

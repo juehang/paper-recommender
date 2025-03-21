@@ -221,24 +221,29 @@
             return;
         }
         
-        // Create recommendations container
-        const recommendationsContainer = document.createElement('div');
-        recommendationsContainer.className = 'recommendations-container';
-        
-        // Add papers
+        // Add papers directly to the grid container
         state.recommendedPapers.forEach(paper => {
             const paperCard = createPaperCard(paper, false);
-            recommendationsContainer.appendChild(paperCard);
+            container.appendChild(paperCard);
         });
         
-        container.appendChild(recommendationsContainer);
-        
-        // Add submit button
-        const submitButton = document.createElement('button');
-        submitButton.className = 'btn btn-primary mt-3';
-        submitButton.textContent = 'Submit Ratings';
-        submitButton.addEventListener('click', submitRecommendationRatings);
-        container.appendChild(submitButton);
+        // Add submit button to the form, outside the grid
+        const form = document.getElementById('recommendation-form');
+        if (form) {
+            // Remove any existing submit button
+            const existingButton = form.querySelector('.submit-ratings-btn');
+            if (existingButton) {
+                existingButton.remove();
+            }
+            
+            // Create and add the new button
+            const submitButton = document.createElement('button');
+            submitButton.className = 'btn-primary inline-block bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transition-colors duration-300 mt-6 submit-ratings-btn';
+            submitButton.textContent = 'Submit Ratings';
+            submitButton.type = 'button'; // Ensure it doesn't submit the form
+            submitButton.addEventListener('click', submitRecommendationRatings);
+            form.appendChild(submitButton);
+        }
     }
 
     // Submit recommendation ratings
@@ -374,27 +379,54 @@
         container.innerHTML = '';
         
         if (!state.semanticSearchResults || state.semanticSearchResults.length === 0) {
-            container.innerHTML = '<div class="alert alert-info">No results found for your query. Try a different search term or time range.</div>';
+            container.innerHTML = '<div class="bg-blue-50 border-l-4 border-blue-500 text-blue-800 p-4 rounded">No results found for your query. Try a different search term or time range.</div>';
             return;
         }
         
+        // Create a flex column layout for the entire content
+        const contentWrapper = document.createElement('div');
+        contentWrapper.className = 'flex flex-col w-full';
+        container.appendChild(contentWrapper);
+        
         // Add search info
         const searchInfo = document.createElement('div');
-        searchInfo.className = 'search-info mb-3';
-        searchInfo.innerHTML = `<h3>Semantic Search Results</h3><p>Showing ${state.semanticSearchResults.length} results for: "${state.semanticSearchQuery}"</p>`;
-        container.appendChild(searchInfo);
+        searchInfo.className = 'bg-gray-50 p-4 rounded-lg border-l-4 border-primary-600 mb-4 w-full';
+        searchInfo.innerHTML = `
+            <h3 class="text-lg font-semibold mb-1">Semantic Search Results</h3>
+            <p class="text-gray-700">Showing ${state.semanticSearchResults.length} results for: "${state.semanticSearchQuery}"</p>
+        `;
+        contentWrapper.appendChild(searchInfo);
+        
+        // Create a div for the table to ensure it takes full width
+        const tableContainer = document.createElement('div');
+        tableContainer.className = 'w-full overflow-x-auto mb-4';
+        contentWrapper.appendChild(tableContainer);
         
         // Create table
         const table = document.createElement('table');
-        table.className = 'database-table';
+        table.className = 'w-full divide-y divide-gray-200 border border-gray-200';
+        table.style.width = '100%'; // Ensure table is full width
         
         // Create header
         const thead = document.createElement('thead');
+        thead.className = 'bg-gray-50';
         const headerRow = document.createElement('tr');
         
-        ['Title', 'Abstract', 'Similarity', 'Rating', 'Date Added', 'Actions'].forEach(header => {
+        // Define column headers with appropriate widths
+        const headers = [
+            { text: 'Title', width: '20%' },
+            { text: 'Abstract', width: '40%' },
+            { text: 'Similarity', width: '10%' },
+            { text: 'Rating', width: '10%' },
+            { text: 'Date Added', width: '10%' },
+            { text: 'Actions', width: '10%' }
+        ];
+        
+        headers.forEach(header => {
             const th = document.createElement('th');
-            th.textContent = header;
+            th.className = 'px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider';
+            th.style.width = header.width;
+            th.textContent = header.text;
             headerRow.appendChild(th);
         });
         
@@ -403,9 +435,11 @@
         
         // Create body
         const tbody = document.createElement('tbody');
+        tbody.className = 'bg-white divide-y divide-gray-200';
         
-        state.semanticSearchResults.forEach(doc => {
+        state.semanticSearchResults.forEach((doc, index) => {
             const row = document.createElement('tr');
+            row.className = index % 2 === 0 ? 'bg-white' : 'bg-gray-50';
             
             // Extract title and abstract
             const parts = doc.document.split('\n');
@@ -414,20 +448,22 @@
             
             // Title cell
             const titleCell = document.createElement('td');
-            titleCell.className = 'title-cell';
+            titleCell.className = 'px-4 py-3 text-sm font-medium text-gray-900 break-words';
+            titleCell.style.width = '20%';
             titleCell.textContent = title;
             row.appendChild(titleCell);
             
             // Abstract cell (truncated)
             const abstractCell = document.createElement('td');
-            abstractCell.className = 'abstract-cell';
+            abstractCell.className = 'px-4 py-3 text-sm text-gray-700 break-words';
+            abstractCell.style.width = '40%';
             const abstractPreview = abstract.length > 100 ? abstract.substring(0, 100) + '...' : abstract;
             abstractCell.textContent = abstractPreview;
             
             // Add expand button if abstract is long
             if (abstract.length > 100) {
                 const expandBtn = document.createElement('button');
-                expandBtn.className = 'btn-small';
+                expandBtn.className = 'mt-2 px-2 py-1 text-xs bg-gray-200 hover:bg-gray-300 rounded text-gray-700';
                 expandBtn.textContent = 'Show More';
                 expandBtn.addEventListener('click', () => {
                     if (abstractCell.textContent === abstractPreview) {
@@ -447,18 +483,20 @@
             
             // Similarity cell
             const similarityCell = document.createElement('td');
-            similarityCell.className = 'similarity-cell';
+            similarityCell.className = 'px-4 py-3 text-sm text-gray-700';
+            similarityCell.style.width = '10%';
             
             // Format similarity as percentage
             const similarityPercent = (doc.similarity * 100).toFixed(1);
             
             // Create similarity bar
             const similarityBar = document.createElement('div');
-            similarityBar.className = 'similarity-bar';
+            similarityBar.className = 'h-2 bg-primary-600 rounded-full mb-1';
             similarityBar.style.width = `${similarityPercent}%`;
             
             // Create similarity text
             const similarityText = document.createElement('span');
+            similarityText.className = 'text-xs';
             similarityText.textContent = `${similarityPercent}%`;
             
             similarityCell.appendChild(similarityBar);
@@ -467,26 +505,29 @@
             
             // Rating cell
             const ratingCell = document.createElement('td');
-            ratingCell.className = 'rating-cell';
+            ratingCell.className = 'px-4 py-3 text-sm text-center text-gray-700';
+            ratingCell.style.width = '10%';
             ratingCell.textContent = doc.rating || 'N/A';
             row.appendChild(ratingCell);
             
             // Date cell
             const dateCell = document.createElement('td');
-            dateCell.className = 'date-cell';
+            dateCell.className = 'px-4 py-3 text-sm text-center text-gray-700';
+            dateCell.style.width = '10%';
             dateCell.textContent = doc.timestamp_display || 'N/A';
             row.appendChild(dateCell);
             
             // Actions cell
             const actionsCell = document.createElement('td');
-            actionsCell.className = 'actions-cell';
+            actionsCell.className = 'px-4 py-3 text-sm text-center';
+            actionsCell.style.width = '10%';
             
             // Link button
             if (doc.link) {
                 const linkBtn = document.createElement('a');
                 linkBtn.href = doc.link;
                 linkBtn.target = '_blank';
-                linkBtn.className = 'btn-small';
+                linkBtn.className = 'px-3 py-1 bg-primary-600 text-white rounded hover:bg-primary-700 text-xs';
                 linkBtn.textContent = 'View Paper';
                 actionsCell.appendChild(linkBtn);
             }
@@ -497,11 +538,11 @@
         });
         
         table.appendChild(tbody);
-        container.appendChild(table);
+        tableContainer.appendChild(table);
         
         // Add reset button
         const resetButton = document.createElement('button');
-        resetButton.className = 'btn mt-3';
+        resetButton.className = 'mt-4 px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-opacity-50';
         resetButton.textContent = 'Back to All Documents';
         resetButton.addEventListener('click', () => {
             // Clear semantic search results
@@ -518,7 +559,7 @@
             initializeDatabaseView();
         });
         
-        container.appendChild(resetButton);
+        contentWrapper.appendChild(resetButton);
     }
 
     // Render database documents
@@ -530,7 +571,7 @@
         container.innerHTML = '';
         
         if (!state.databaseDocuments || state.databaseDocuments.length === 0) {
-            container.innerHTML = '<div class="alert alert-info">No documents found in the database.</div>';
+            container.innerHTML = '<div class="bg-blue-50 border-l-4 border-blue-500 text-blue-800 p-4 rounded">No documents found in the database.</div>';
             return;
         }
         
@@ -545,7 +586,7 @@
         
         // Apply filter
         if (filterValue) {
-            documents = documents.filter(doc => 
+            documents = documents.filter(doc =>
                 doc.document.toLowerCase().includes(filterValue)
             );
         }
@@ -566,17 +607,46 @@
             }
         });
         
+        // Create a flex column layout for the entire content
+        const contentWrapper = document.createElement('div');
+        contentWrapper.className = 'flex flex-col w-full';
+        container.appendChild(contentWrapper);
+        
+        // Add count info at the top
+        const countInfo = document.createElement('div');
+        countInfo.className = 'mb-4 text-sm text-gray-600 font-medium';
+        countInfo.textContent = `Showing ${documents.length} of ${state.databaseDocuments.length} documents`;
+        contentWrapper.appendChild(countInfo);
+        
+        // Create a div for the table to ensure it takes full width
+        const tableContainer = document.createElement('div');
+        tableContainer.className = 'w-full overflow-x-auto';
+        contentWrapper.appendChild(tableContainer);
+        
         // Create table
         const table = document.createElement('table');
-        table.className = 'database-table';
+        table.className = 'w-full divide-y divide-gray-200 border border-gray-200';
+        table.style.width = '100%'; // Ensure table is full width
         
         // Create header
         const thead = document.createElement('thead');
+        thead.className = 'bg-gray-50';
         const headerRow = document.createElement('tr');
         
-        ['Title', 'Abstract', 'Rating', 'Date Added', 'Actions'].forEach(header => {
+        // Define column headers with appropriate widths
+        const headers = [
+            { text: 'Title', width: '25%' },
+            { text: 'Abstract', width: '45%' },
+            { text: 'Rating', width: '10%' },
+            { text: 'Date Added', width: '10%' },
+            { text: 'Actions', width: '10%' }
+        ];
+        
+        headers.forEach(header => {
             const th = document.createElement('th');
-            th.textContent = header;
+            th.className = 'px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider';
+            th.style.width = header.width;
+            th.textContent = header.text;
             headerRow.appendChild(th);
         });
         
@@ -585,9 +655,11 @@
         
         // Create body
         const tbody = document.createElement('tbody');
+        tbody.className = 'bg-white divide-y divide-gray-200';
         
-        documents.forEach(doc => {
+        documents.forEach((doc, index) => {
             const row = document.createElement('tr');
+            row.className = index % 2 === 0 ? 'bg-white' : 'bg-gray-50';
             
             // Extract title and abstract
             const parts = doc.document.split('\n');
@@ -596,20 +668,22 @@
             
             // Title cell
             const titleCell = document.createElement('td');
-            titleCell.className = 'title-cell';
+            titleCell.className = 'px-4 py-3 text-sm font-medium text-gray-900 break-words';
+            titleCell.style.width = '25%';
             titleCell.textContent = title;
             row.appendChild(titleCell);
             
             // Abstract cell (truncated)
             const abstractCell = document.createElement('td');
-            abstractCell.className = 'abstract-cell';
+            abstractCell.className = 'px-4 py-3 text-sm text-gray-700 break-words';
+            abstractCell.style.width = '45%';
             const abstractPreview = abstract.length > 100 ? abstract.substring(0, 100) + '...' : abstract;
             abstractCell.textContent = abstractPreview;
             
             // Add expand button if abstract is long
             if (abstract.length > 100) {
                 const expandBtn = document.createElement('button');
-                expandBtn.className = 'btn-small';
+                expandBtn.className = 'mt-2 px-2 py-1 text-xs bg-gray-200 hover:bg-gray-300 rounded text-gray-700';
                 expandBtn.textContent = 'Show More';
                 expandBtn.addEventListener('click', () => {
                     if (abstractCell.textContent === abstractPreview) {
@@ -629,26 +703,29 @@
             
             // Rating cell
             const ratingCell = document.createElement('td');
-            ratingCell.className = 'rating-cell';
+            ratingCell.className = 'px-4 py-3 text-sm text-center text-gray-700';
+            ratingCell.style.width = '10%';
             ratingCell.textContent = doc.rating || 'N/A';
             row.appendChild(ratingCell);
             
             // Date cell
             const dateCell = document.createElement('td');
-            dateCell.className = 'date-cell';
+            dateCell.className = 'px-4 py-3 text-sm text-center text-gray-700';
+            dateCell.style.width = '10%';
             dateCell.textContent = doc.timestamp_display || 'N/A';
             row.appendChild(dateCell);
             
             // Actions cell
             const actionsCell = document.createElement('td');
-            actionsCell.className = 'actions-cell';
+            actionsCell.className = 'px-4 py-3 text-sm text-center';
+            actionsCell.style.width = '10%';
             
             // Link button
             if (doc.link) {
                 const linkBtn = document.createElement('a');
                 linkBtn.href = doc.link;
                 linkBtn.target = '_blank';
-                linkBtn.className = 'btn-small';
+                linkBtn.className = 'px-3 py-1 bg-primary-600 text-white rounded hover:bg-primary-700 text-xs';
                 linkBtn.textContent = 'View Paper';
                 actionsCell.appendChild(linkBtn);
             }
@@ -659,13 +736,7 @@
         });
         
         table.appendChild(tbody);
-        container.appendChild(table);
-        
-        // Add count info
-        const countInfo = document.createElement('div');
-        countInfo.className = 'count-info mt-3';
-        countInfo.textContent = `Showing ${documents.length} of ${state.databaseDocuments.length} documents`;
-        container.appendChild(countInfo);
+        tableContainer.appendChild(table);
     }
 
     // ---- VISUALIZATION VIEW FUNCTIONS ----
@@ -877,6 +948,28 @@
             await core.loadConfig();
         }
     }
+    
+    // ---- DATABASE MANAGEMENT FUNCTIONS ----
+    
+    // Recompute embeddings for all documents
+    async function recomputeEmbeddings() {
+        if (!confirm("This will clear the embedding cache and recompute all embeddings. This process may take a while depending on the number of documents. Continue?")) {
+            return;
+        }
+        
+        showLoading(true, 'Recomputing embeddings...');
+        try {
+            const docCount = await eel.recompute_embeddings()();
+            showAlert(`Successfully recomputed embeddings for ${docCount} documents.`, 'success');
+            
+            // Reload database view to reflect changes
+            await initializeDatabaseView();
+        } catch (error) {
+            showAlert(`Error recomputing embeddings: ${error}`, 'danger');
+        } finally {
+            showLoading(false);
+        }
+    }
 
     // ---- HELPER FUNCTIONS ----
     // Helper functions moved to components.js
@@ -900,6 +993,7 @@
         renderDatabaseDocuments,
         performSemanticSearch,
         renderSemanticSearchResults,
+        recomputeEmbeddings,
         
         // Visualization view
         initializeVisualizationView,

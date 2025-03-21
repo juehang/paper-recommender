@@ -248,6 +248,16 @@
             });
         }
         
+        // Recompute embeddings button
+        const recomputeEmbeddings = document.getElementById('recompute-embeddings');
+        if (recomputeEmbeddings) {
+            recomputeEmbeddings.addEventListener('click', () => {
+                if (namespace.views && namespace.views.recomputeEmbeddings) {
+                    namespace.views.recomputeEmbeddings(); // Recompute all embeddings
+                }
+            });
+        }
+        
         // Semantic search button
         const semanticSearchButton = document.getElementById('semantic-search-button');
         if (semanticSearchButton) {
