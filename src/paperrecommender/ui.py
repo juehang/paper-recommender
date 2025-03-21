@@ -749,7 +749,7 @@ def start_app(web_dir=None, mode="chrome-app", host="localhost", port=8000, bloc
     init_components()
     
     # Start Eel
-    eel.start('index.html', mode=mode, host=host, port=port, block=block)
+    eel.start('index.html', mode=mode, host=host, port=port, block=block, size=(1200, 1000))
 
 def main():
     """

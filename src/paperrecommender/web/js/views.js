@@ -400,12 +400,15 @@
         // Create a div for the table to ensure it takes full width
         const tableContainer = document.createElement('div');
         tableContainer.className = 'w-full overflow-x-auto mb-4';
+        tableContainer.style.width = '100%';
+        tableContainer.style.maxWidth = '100%';
         contentWrapper.appendChild(tableContainer);
         
         // Create table
         const table = document.createElement('table');
         table.className = 'w-full divide-y divide-gray-200 border border-gray-200';
-        table.style.width = '100%'; // Ensure table is full width
+        table.style.width = '100%';
+        table.style.tableLayout = 'fixed';
         
         // Create header
         const thead = document.createElement('thead');
@@ -453,31 +456,8 @@
             titleCell.textContent = title;
             row.appendChild(titleCell);
             
-            // Abstract cell (truncated)
-            const abstractCell = document.createElement('td');
-            abstractCell.className = 'px-4 py-3 text-sm text-gray-700 break-words';
-            abstractCell.style.width = '40%';
-            const abstractPreview = abstract.length > 100 ? abstract.substring(0, 100) + '...' : abstract;
-            abstractCell.textContent = abstractPreview;
-            
-            // Add expand button if abstract is long
-            if (abstract.length > 100) {
-                const expandBtn = document.createElement('button');
-                expandBtn.className = 'mt-2 px-2 py-1 text-xs bg-gray-200 hover:bg-gray-300 rounded text-gray-700';
-                expandBtn.textContent = 'Show More';
-                expandBtn.addEventListener('click', () => {
-                    if (abstractCell.textContent === abstractPreview) {
-                        abstractCell.textContent = abstract;
-                        expandBtn.textContent = 'Show Less';
-                    } else {
-                        abstractCell.textContent = abstractPreview;
-                        expandBtn.textContent = 'Show More';
-                    }
-                });
-                
-                abstractCell.appendChild(document.createElement('br'));
-                abstractCell.appendChild(expandBtn);
-            }
+            // Abstract cell with show more/less functionality
+            const abstractCell = createAbstractCell(abstract, '40%');
             
             row.appendChild(abstractCell);
             
@@ -621,12 +601,15 @@
         // Create a div for the table to ensure it takes full width
         const tableContainer = document.createElement('div');
         tableContainer.className = 'w-full overflow-x-auto';
+        tableContainer.style.width = '100%';
+        tableContainer.style.maxWidth = '100%';
         contentWrapper.appendChild(tableContainer);
         
         // Create table
         const table = document.createElement('table');
         table.className = 'w-full divide-y divide-gray-200 border border-gray-200';
-        table.style.width = '100%'; // Ensure table is full width
+        table.style.width = '100%';
+        table.style.tableLayout = 'fixed';
         
         // Create header
         const thead = document.createElement('thead');
@@ -636,9 +619,9 @@
         // Define column headers with appropriate widths
         const headers = [
             { text: 'Title', width: '25%' },
-            { text: 'Abstract', width: '45%' },
-            { text: 'Rating', width: '10%' },
-            { text: 'Date Added', width: '10%' },
+            { text: 'Abstract', width: '42%' },
+            { text: 'Rating', width: '8%' },
+            { text: 'Date Added', width: '15%' },
             { text: 'Actions', width: '10%' }
         ];
         
@@ -673,31 +656,8 @@
             titleCell.textContent = title;
             row.appendChild(titleCell);
             
-            // Abstract cell (truncated)
-            const abstractCell = document.createElement('td');
-            abstractCell.className = 'px-4 py-3 text-sm text-gray-700 break-words';
-            abstractCell.style.width = '45%';
-            const abstractPreview = abstract.length > 100 ? abstract.substring(0, 100) + '...' : abstract;
-            abstractCell.textContent = abstractPreview;
-            
-            // Add expand button if abstract is long
-            if (abstract.length > 100) {
-                const expandBtn = document.createElement('button');
-                expandBtn.className = 'mt-2 px-2 py-1 text-xs bg-gray-200 hover:bg-gray-300 rounded text-gray-700';
-                expandBtn.textContent = 'Show More';
-                expandBtn.addEventListener('click', () => {
-                    if (abstractCell.textContent === abstractPreview) {
-                        abstractCell.textContent = abstract;
-                        expandBtn.textContent = 'Show Less';
-                    } else {
-                        abstractCell.textContent = abstractPreview;
-                        expandBtn.textContent = 'Show More';
-                    }
-                });
-                
-                abstractCell.appendChild(document.createElement('br'));
-                abstractCell.appendChild(expandBtn);
-            }
+            // Abstract cell with show more/less functionality
+            const abstractCell = createAbstractCell(abstract, '45%');
             
             row.appendChild(abstractCell);
             
@@ -972,7 +932,42 @@
     }
 
     // ---- HELPER FUNCTIONS ----
-    // Helper functions moved to components.js
+    
+    // Create abstract cell with show more/less functionality
+    function createAbstractCell(abstract, width) {
+        const abstractCell = document.createElement('td');
+        abstractCell.className = 'px-4 py-3 text-sm text-gray-700 break-words';
+        abstractCell.style.width = width || '40%';
+        
+        // Create a separate element for the abstract text
+        const abstractTextElement = document.createElement('div');
+        const abstractPreview = abstract.length > 100 ? abstract.substring(0, 100) + '...' : abstract;
+        abstractTextElement.textContent = abstractPreview;
+        abstractCell.appendChild(abstractTextElement);
+        
+        // Add expand button if abstract is long
+        if (abstract.length > 100) {
+            const expandBtn = document.createElement('button');
+            expandBtn.className = 'mt-2 px-2 py-1 text-xs bg-gray-200 hover:bg-gray-300 rounded text-gray-700';
+            expandBtn.textContent = 'Show More';
+            expandBtn.addEventListener('click', () => {
+                if (abstractTextElement.textContent === abstractPreview) {
+                    abstractTextElement.textContent = abstract;
+                    expandBtn.textContent = 'Show Less';
+                } else {
+                    abstractTextElement.textContent = abstractPreview;
+                    expandBtn.textContent = 'Show More';
+                }
+            });
+            
+            abstractCell.appendChild(document.createElement('br'));
+            abstractCell.appendChild(expandBtn);
+        }
+        
+        return abstractCell;
+    }
+    
+    // Other helper functions moved to components.js
 
     // Export public functions
     namespace.views = {
@@ -992,6 +987,9 @@
         initializeDatabaseView,
         renderDatabaseDocuments,
         performSemanticSearch,
+        
+        // Helper functions
+        createAbstractCell,
         renderSemanticSearchResults,
         recomputeEmbeddings,
         
