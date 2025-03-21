@@ -466,7 +466,7 @@ class Onboarder:
 
 
 # Factory function with the same interface
-def create_onboarding_system(period=48, random_sample_size=5, diverse_sample_size=5, chroma_db_path=None, embedding_cache_path=None, config=None):
+def create_onboarding_system(period=48, random_sample_size=5, diverse_sample_size=5, chroma_db_path=None, embedding_cache_path=None, config=None, data_source=None, embedding_model=None, vector_store=None):
     """
     Create and return a complete onboarding system.
     
@@ -477,6 +477,9 @@ def create_onboarding_system(period=48, random_sample_size=5, diverse_sample_siz
         chroma_db_path (str, optional): Path to ChromaDB directory
         embedding_cache_path (str, optional): Path to embedding cache file
         config (dict, optional): Configuration dictionary
+        data_source (ArXivDataSource, optional): Existing data source to use
+        embedding_model (EmbeddingModel, optional): Existing embedding model to use
+        vector_store (ChromaVectorStore, optional): Existing vector store to use
         
     Returns:
         tuple: (data_source, embedding_model, vector_store, onboarder)
@@ -495,18 +498,23 @@ def create_onboarding_system(period=48, random_sample_size=5, diverse_sample_siz
     if embedding_cache_path is not None:
         config["embedding_cache_path"] = embedding_cache_path
     
-    # Create the components
-    data_source = ArXivDataSource(period=config["period_hours"])
-    embedding_model = create_embedding_model(config)
-    vector_store = ChromaVectorStore(embedding_model, path=config["chroma_db_path"])
+    # Create the components if not provided
+    if data_source is None:
+        data_source = ArXivDataSource(period=config["period_hours"])
+    
+    if embedding_model is None:
+        embedding_model = create_embedding_model(config)
+    
+    if vector_store is None:
+        vector_store = ChromaVectorStore(embedding_model, path=config["chroma_db_path"])
     
     # Create strategies
     random_strategy = RandomSelectionStrategy(data_source, embedding_model, random_sample_size)
     diverse_strategy = DiverseSelectionStrategy(data_source, embedding_model, diverse_sample_size)
     
     # Create onboarder with strategies
-    onboarder = Onboarder(data_source, vector_store, embedding_model, 
-                          [random_strategy, diverse_strategy])
+    onboarder = Onboarder(data_source, vector_store, embedding_model,
+                           [random_strategy, diverse_strategy])
     
     return data_source, embedding_model, vector_store, onboarder
 
@@ -531,13 +539,16 @@ def terminal_ui_onboarding(config=None):
     embedding_model = create_embedding_model(config)
     vector_store = ChromaVectorStore(embedding_model, path=config["chroma_db_path"])
     
-    # Create strategies with default sample sizes
-    random_strategy = RandomSelectionStrategy(data_source, embedding_model, config["random_sample_size"])
-    diverse_strategy = DiverseSelectionStrategy(data_source, embedding_model, config["diverse_sample_size"])
-    
-    # Create onboarder with strategies
-    onboarder = Onboarder(data_source, vector_store, embedding_model, 
-                          [random_strategy, diverse_strategy])
+    # Create onboarder using existing components
+    _, _, _, onboarder = create_onboarding_system(
+        period=config["period_hours"],
+        random_sample_size=config["random_sample_size"],
+        diverse_sample_size=config["diverse_sample_size"],
+        config=config,
+        data_source=data_source,
+        embedding_model=embedding_model,
+        vector_store=vector_store
+    )
     
     # Ask if the user wants to add a custom paper
     add_custom = input("Would you like to add a custom paper? (y/n): ")
@@ -633,14 +644,16 @@ def terminal_ui_onboarding(config=None):
         # Update data source if period changed
         if period != config["period_hours"]:
             data_source = ArXivDataSource(period=period)
-            
-        # Update strategies with new sample sizes
-        random_strategy = RandomSelectionStrategy(data_source, embedding_model, random_size)
-        diverse_strategy = DiverseSelectionStrategy(data_source, embedding_model, diverse_size)
         
-        # Recreate onboarder with updated strategies
-        onboarder = Onboarder(data_source, vector_store, embedding_model, 
-                              [random_strategy, diverse_strategy])
+        # Create updated onboarder using existing components but with new parameters
+        _, _, _, onboarder = create_onboarding_system(
+            period=period,
+            random_sample_size=random_size,
+            diverse_sample_size=diverse_size,
+            data_source=data_source,
+            embedding_model=embedding_model,
+            vector_store=vector_store
+        )
     
     # The progress tracker will be created in prepare_candidates with the appropriate total
     print("Preparing candidate papers...")

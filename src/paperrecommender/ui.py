@@ -104,14 +104,17 @@ def init_components():
     # Create vector store
     vector_store = ChromaVectorStore(embedding_model, path=config["chroma_db_path"])
     
-    # Create onboarder
+    # Create onboarder using existing components
     _, _, _, onboarder = create_onboarding_system(
         period=config["period_hours"],
         random_sample_size=config["random_sample_size"],
         diverse_sample_size=config["diverse_sample_size"],
         chroma_db_path=config["chroma_db_path"],
         embedding_cache_path=config["embedding_cache_path"],
-        config=config
+        config=config,
+        data_source=data_source,
+        embedding_model=embedding_model,
+        vector_store=vector_store
     )
     
     # Create recommender
